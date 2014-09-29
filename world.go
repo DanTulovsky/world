@@ -1,10 +1,14 @@
 package world
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
+
+	termbox "github.com/nsf/termbox-go"
 )
 
 var (
@@ -12,46 +16,108 @@ var (
 )
 
 func Log(txt ...interface{}) {
-	fmt.Printf("%v\n", txt)
+	fmt.Fprintf(os.Stderr, "%v\n", txt)
 }
 
 // World describes the world state
 type World struct {
-	peeps    []*Peep // citizens
-	name     string
-	settings Settings
-	turn     int64 // the current turn
+	peeps      []*Peep // citizens
+	name       string
+	settings   Settings
+	turn       int64              // the current turn
+	eventQueue chan termbox.Event // for catching user input
+	grid       *Grid              // Map of coordinates to occupant
 }
 
-func NewWorld(name string, settings Settings) *World {
+func NewWorld(name string, settings Settings, eventQueue chan termbox.Event) *World {
 	rand.Seed(time.Now().UnixNano())
 	return &World{
-		name:     name,
-		settings: settings,
+		name:       name,
+		settings:   settings,
+		eventQueue: eventQueue, // keyboard input events
+		grid: &Grid{
+			size:    settings.Size,
+			objects: make(map[Location]string),
+		}, // empty grid
 	}
 }
 
 // NextTurn advances the world to the next turn.
-func (world *World) NextTurn() {
-	world.turn++
+func (w *World) NextTurn() error {
+	// Check if we should exit
+	select {
+	case ev := <-w.eventQueue:
+		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEsc {
+			return errors.New("Exiting...")
+		}
+	default:
+		// Redraw screen
+		w.Draw()
 
-	// New peep might be born
-	world.newPeep()
+		w.turn++
 
-	// Age existing peeps
-	for _, peep := range world.peeps {
-		peep.AgeOrDie(world.settings.MaxAge, world.settings.RandomDeath)
+		// Move peeps around
+		w.MovePeeps()
+
+		// New peep might be born
+		if err := w.randomPeep(); err != nil {
+			Log(err)
+		}
+
+		// Age existing peeps
+		for _, peep := range w.peeps {
+			if !peep.IsAlive() {
+				continue
+			}
+			peep.AgeOrDie(w.settings.MaxAge, w.settings.RandomDeath)
+		}
+
+	}
+	return nil
+}
+
+// MovePeeps moves peeps around every turn
+func (w *World) MovePeeps() {
+	for _, peep := range w.peeps {
+		if !peep.IsAlive() {
+			continue
+		}
+
+		var x, y, z int32
+		// Peeps can move one square at a time in x, y direction.
+		m := []int32{-1, 0, 1}
+		x = m[rand.Intn(len(m))]
+		y = m[rand.Intn(len(m))]
+
+		//Log(fmt.Sprintf("Moving %v (%v): (%v, %v, %v)", peep.ID(), peep.Location(), x, y, z))
+		if err := w.Move(peep, x, y, z); err != nil {
+			Log(err)
+		}
 	}
 }
 
-// newPeep creates a new peep at random
-// randomness controlled by world.settings.newpeep
+// randomPeep creates a new peep at random
+// randomness controlled by world.settings.NewPeepModifier
 // As the world grows, probability of this event goes towards 0
-func (world *World) newPeep() {
-	probability := world.settings.NewPeep - (float64(world.AlivePeeps()) / world.settings.NewPeepModifier)
-	if rand.Float64() < probability {
-		world.peeps = append(world.peeps, NewPeep())
+// Subject to world.settings.MaxPeeps
+func (w *World) randomPeep() error {
+	// MaxPeeps already, short circuit here.
+	if w.AlivePeeps() >= w.settings.MaxPeeps || w.AlivePeeps() >= w.settings.NewPeepMax {
+		return fmt.Errorf("cannot create new peep, MaxPeeps already present")
 	}
+
+	// Something at origin
+	if id, ok := w.grid.objects[Location{0, 0, 0}]; ok {
+		if id != "" && w.IsAlive(id) {
+			return fmt.Errorf("cannot crate new peep, origin taken by: %v", id)
+		}
+	}
+
+	probability := w.settings.NewPeep - (float64(w.AlivePeeps()) / w.settings.NewPeepModifier)
+	if rand.Float64() < probability {
+		w.NewPeep("", Location{})
+	}
+	return nil
 }
 
 // AlivePeeps returns the number of alive peeps
@@ -77,9 +143,9 @@ func (world *World) PeepGenders() map[PeepGender]int64 {
 }
 
 // PeepMaxAge returns the max age of all peeps
-func (world *World) PeepMaxAge() PeepAge {
+func (w *World) PeepMaxAge() PeepAge {
 	var max PeepAge
-	for _, p := range world.peeps {
+	for _, p := range w.peeps {
 		if p.Age() > max && p.IsAlive() {
 			max = p.Age()
 		}
@@ -88,9 +154,12 @@ func (world *World) PeepMaxAge() PeepAge {
 }
 
 // PeepMinAge returns the min age of all peeps
-func (world *World) PeepMinAge() PeepAge {
-	min := world.settings.MaxAge
-	for _, p := range world.peeps {
+func (w *World) PeepMinAge() PeepAge {
+	if w.AlivePeeps() == 0 {
+		return 0
+	}
+	min := w.settings.MaxAge
+	for _, p := range w.peeps {
 		if p.Age() < min && p.IsAlive() {
 			min = p.Age()
 		}
@@ -99,10 +168,10 @@ func (world *World) PeepMinAge() PeepAge {
 }
 
 // PeepAvgAge returns the average age of all peeps
-func (world *World) PeepAvgAge() PeepAge {
+func (w *World) PeepAvgAge() PeepAge {
 	var sum PeepAge
 	var alive PeepAge
-	for _, p := range world.peeps {
+	for _, p := range w.peeps {
 		if p.IsAlive() {
 			sum += p.Age()
 			alive++
@@ -115,27 +184,32 @@ func (world *World) PeepAvgAge() PeepAge {
 }
 
 // Run runs the world.
-func (world *World) Run() {
+func (w *World) Run() {
 	Log("Starting world...")
 }
 
 // Pause pauses the world.
-func (world *World) Pause() {
+func (w *World) Pause() {
 
 }
 
 // String prints world information.
 func (world *World) Show() {
-	fmt.Printf("%v\n", strings.Repeat("-", 80))
-	fmt.Printf("Name: %v\n", world.name)
-	fmt.Printf("Turn: %v\n", world.turn)
-	fmt.Printf("Peeps: %v\n", world.AlivePeeps())
-	fmt.Printf("Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
-	fmt.Printf("Genders: %v\n", world.PeepGenders())
+	io := os.Stderr
+	fmt.Fprintf(io, "%v\n", strings.Repeat("-", 80))
+	fmt.Fprintf(io, "Name: %v\n", world.name)
+	fmt.Fprintf(io, "Turn: %v\n", world.turn)
+	fmt.Fprintf(io, "Peeps: %v/%v\n", world.AlivePeeps(), world.settings.MaxPeeps)
+	fmt.Fprintf(io, "Absolute MaxAge: %v\n", world.settings.MaxAge)
+	fmt.Fprintf(io, "Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
+	fmt.Fprintf(io, "Genders: %v\n", world.PeepGenders())
 
+	//Log("World GRID:")
+	//Log(strings.Repeat("*", 40))
 	//for _, peep := range world.peeps {
 	//	if peep.IsAlive() {
-	//		fmt.Printf("%v\n", peep)
+	//		Log("%%%%", peep.ID(), peep.Location())
 	//	}
 	//}
+	//Log(strings.Repeat("*", 40))
 }

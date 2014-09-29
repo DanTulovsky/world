@@ -78,9 +78,12 @@ func (w *World) ExisterFromID(id string) Exister {
 func (w *World) LocationNeighbors(l Location) []Location {
 	neighbors := []Location{}
 
-	for _, x := range []int32{-1, +1} {
-		for _, y := range []int32{-1, +1} {
+	for _, x := range []int32{-1, 0, 1} {
+		for _, y := range []int32{-1, 0, 1} {
 			newLoc := Location{l.X + x, l.Y + y, l.Z}
+			if newLoc == l {
+				continue // skip our own location
+			}
 			if err := w.CheckOutsideGrid(newLoc.X, newLoc.Y, newLoc.Z); err == nil {
 				neighbors = append(neighbors, newLoc)
 			}

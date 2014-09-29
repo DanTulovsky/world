@@ -80,3 +80,19 @@ func TestExisterIcon(t *testing.T) {
 		So(w.ExisterIcon(peep1), ShouldEqual, 'r')
 	})
 }
+
+func TestLocationNeighbors(t *testing.T) {
+	w := genWorld()
+
+	loc1 := Location{0, 0, 0}
+
+	Convey("Origin should have 8 neightbors", t, func() {
+		So(len(w.LocationNeighbors(loc1)), ShouldEqual, 8)
+	})
+
+	loc2 := Location{w.settings.Size.MinX, w.settings.Size.MinY, 0}
+	Convey("TopLeft should have 3 neightbors", t, func() {
+		So(len(w.LocationNeighbors(loc2)), ShouldEqual, 3)
+	})
+
+}

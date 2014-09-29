@@ -76,18 +76,25 @@ func (w *World) NextTurn() error {
 	return nil
 }
 
+// BestPeepMove returns the most optimal move for a peep
+func (w *World) BestPeepMove(peep *Peep) (int32, int32, int32) {
+	// random for now
+	var x, y, z int32
+	// Peeps can move one square at a time in x, y direction.
+	m := []int32{-1, 0, 1}
+	x = m[rand.Intn(len(m))]
+	y = m[rand.Intn(len(m))]
+	return x, y, z
+}
+
 // MovePeeps moves peeps around every turn
 func (w *World) MovePeeps() {
 	for _, peep := range w.peeps {
+		// Dead peeps don't move... for now.
 		if !peep.IsAlive() {
 			continue
 		}
-
-		var x, y, z int32
-		// Peeps can move one square at a time in x, y direction.
-		m := []int32{-1, 0, 1}
-		x = m[rand.Intn(len(m))]
-		y = m[rand.Intn(len(m))]
+		x, y, z := w.BestPeepMove(peep)
 
 		//Log(fmt.Sprintf("Moving %v (%v): (%v, %v, %v)", peep.ID(), peep.Location(), x, y, z))
 		if err := w.Move(peep, x, y, z); err != nil {

@@ -90,9 +90,9 @@ func TestLocationNeighbors(t *testing.T) {
 		So(len(w.LocationNeighbors(loc1)), ShouldEqual, 8)
 	})
 
-	//loc2 := &Location{w.settings.Size.MinX, w.settings.Size.MinY, 0}
-	//Convey("TopLeft should have 3 neightbors", t, func() {
-	//	So(len(w.LocationNeighbors(loc2)), ShouldEqual, 3)
-	//})
+	loc2 := &Location{w.settings.Size.MinX, w.settings.Size.MinY, 0}
+	Convey("TopLeft should have 3 neightbors", t, func() {
+		So(len(w.LocationNeighbors(loc2)), ShouldEqual, 3)
+	})
 
 }

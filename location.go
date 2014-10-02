@@ -57,6 +57,7 @@ type Exister interface {
 	ID() string
 	Gender() PeepGender
 	Age() PeepAge
+	IsAlive() bool
 }
 
 // Mover defines an object that can move through the world.
@@ -66,16 +67,6 @@ type Mover interface {
 	MoveX(int32) error
 	MoveY(int32) error
 	MoveZ(int32) error
-}
-
-// IsAlive returns true if given id is alive
-func (w *World) IsAlive(id string) bool {
-	for _, p := range w.peeps {
-		if p.ID() == id {
-			return p.IsAlive()
-		}
-	}
-	return false
 }
 
 // ExisterFromID returns an exister based on id
@@ -161,7 +152,7 @@ func (w *World) IsOccupiedLocation(l *Location) bool {
 	if e == nil {
 		return false
 	}
-	if w.IsAlive(e.ID()) {
+	if e.IsAlive() {
 		return true
 	}
 	return false
@@ -324,7 +315,7 @@ func (w *World) Draw() {
 
 	for _, loc := range w.grid.objects.AllNonEmptyLocations() {
 		e := w.grid.objects.GetByLocation(loc)
-		if e.ID() == "" || !w.IsAlive(e.ID()) {
+		if !e.IsAlive() {
 			continue
 		}
 

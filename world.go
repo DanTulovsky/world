@@ -116,7 +116,7 @@ func (w *World) randomPeep() error {
 	// Something at origin
 	e := w.grid.objects.GetByLocation(&Location{0, 0, 0})
 
-	if e != nil && w.IsAlive(e.ID()) {
+	if e != nil && e.IsAlive() {
 		return fmt.Errorf("cannot crate new peep, origin taken by: %v", e.ID())
 	}
 
@@ -211,12 +211,12 @@ func (world *World) Show() {
 	fmt.Fprintf(io, "Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
 	fmt.Fprintf(io, "Genders: %v\n", world.PeepGenders())
 
-	Log("World GRID:")
-	Log(strings.Repeat("*", 40))
-	for _, peep := range world.peeps {
-		if peep.IsAlive() {
-			Log("%%%%", peep.ID(), peep.Location())
-		}
-	}
-	Log(strings.Repeat("*", 40))
+	//Log("World GRID:")
+	//Log(strings.Repeat("*", 40))
+	//for _, peep := range world.peeps {
+	//	if peep.IsAlive() {
+	//		Log("%%%%", peep.ID(), peep.Location())
+	//	}
+	//}
+	//Log(strings.Repeat("*", 40))
 }

@@ -14,7 +14,7 @@ type Grid struct {
 	size *Size
 
 	// Each object is represented by a unique string
-	objects map[Location]string
+	objects *dmap
 }
 
 // Location specifies one coordinate in the world.
@@ -22,6 +22,10 @@ type Location struct {
 	X int32
 	Y int32
 	Z int32
+}
+
+func (l *Location) String() string {
+	return fmt.Sprintf("(%v, %v, %v)", l.X, l.Y, l.Z)
 }
 
 // Size specifies the world size
@@ -142,7 +146,12 @@ func (w *World) Meet(left, right Exister) {
 
 // IsOccupiedLocation returns True if the given Location is occupied by something alive
 func (w *World) IsOccupiedLocation(l Location) bool {
-	if w.grid.objects[l] != "" && w.IsAlive(w.grid.objects[l]) {
+	e := w.grid.objects.GetByLocation(l)
+
+	if e == nil {
+		return false
+	}
+	if w.IsAlive(e.ID()) {
 		return true
 	}
 	return false
@@ -153,25 +162,29 @@ func (w *World) IsOccupiedLocation(l Location) bool {
 // A dead peep is not an occupant
 func (w *World) UpdateGrid(m Mover, src Location, dst Location) error {
 	if src == dst {
+
 		// Set explicitly again to catch new peeps being created
-		w.grid.objects[src] = m.ID()
+		w.grid.objects.Set(m, src)
 		return nil
 	}
 	// Check if someone else is already squatting here
-	if squatter, ok := w.grid.objects[dst]; ok {
-		if squatter != "" && squatter != m.ID() && w.IsAlive(squatter) {
+	if w.IsOccupiedLocation(dst) {
+		squatter := w.grid.objects.GetByLocation(dst)
+		if squatter != nil && squatter.ID() != m.ID() {
 			// We have a meeting, perhaps something happens here
-			w.Meet(m, w.ExisterFromID(squatter))
-			return fmt.Errorf("Location (%v) taken by: %v", src, squatter)
+			w.Meet(m, squatter)
+			return fmt.Errorf("Location (%v) taken by: %v", src, squatter.ID())
 		}
 	}
+
 	// Check that new location is inside the grid
 	if err := w.CheckOutsideGrid(dst.X, dst.Y, dst.Z); err != nil {
 		return err
 	}
 
-	w.grid.objects[dst] = m.ID()
-	w.grid.objects[src] = ""
+	w.grid.objects.DelByLocation(src)
+	w.grid.objects.Set(m, dst)
+
 	return nil
 }
 
@@ -299,15 +312,15 @@ func (w *World) Draw() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	w.DrawGrid()
 
-	for loc, id := range w.grid.objects {
-		if id == "" || !w.IsAlive(id) {
+	for _, loc := range w.grid.objects.AllNonEmptyLocations() {
+		e := w.grid.objects.GetByLocation(loc)
+		if e.ID() == "" || !w.IsAlive(e.ID()) {
 			continue
 		}
-		//Log("in draw: ", loc, id)
+
 		// Convert our coordinates to termbox
 		termX := int(loc.X) + int(math.Abs(float64(w.settings.Size.MinX)))
 		termY := int(loc.Y) + int(math.Abs(float64(w.settings.Size.MinY)))
-		e := w.ExisterFromID(id)
 		visuals := w.ExisterVisuals(e)
 
 		termbox.SetCell(termX, termY, visuals.Char, visuals.Fg, visuals.Bg)

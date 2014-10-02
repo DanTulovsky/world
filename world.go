@@ -37,8 +37,8 @@ func NewWorld(name string, settings Settings, eventQueue chan termbox.Event) *Wo
 		eventQueue: eventQueue, // keyboard input events
 		grid: &Grid{
 			size:    settings.Size,
-			objects: make(map[Location]string),
-		}, // empty grid
+			objects: NewDmap(), // empty grid
+		},
 	}
 }
 
@@ -114,10 +114,10 @@ func (w *World) randomPeep() error {
 	}
 
 	// Something at origin
-	if id, ok := w.grid.objects[Location{0, 0, 0}]; ok {
-		if id != "" && w.IsAlive(id) {
-			return fmt.Errorf("cannot crate new peep, origin taken by: %v", id)
-		}
+	e := w.grid.objects.GetByLocation(Location{0, 0, 0})
+
+	if e != nil && w.IsAlive(e.ID()) {
+		return fmt.Errorf("cannot crate new peep, origin taken by: %v", e.ID())
 	}
 
 	probability := w.settings.NewPeep - (float64(w.AlivePeeps()) / w.settings.NewPeepModifier)
@@ -211,12 +211,12 @@ func (world *World) Show() {
 	fmt.Fprintf(io, "Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
 	fmt.Fprintf(io, "Genders: %v\n", world.PeepGenders())
 
-	//Log("World GRID:")
-	//Log(strings.Repeat("*", 40))
-	//for _, peep := range world.peeps {
-	//	if peep.IsAlive() {
-	//		Log("%%%%", peep.ID(), peep.Location())
-	//	}
-	//}
-	//Log(strings.Repeat("*", 40))
+	Log("World GRID:")
+	Log(strings.Repeat("*", 40))
+	for _, peep := range world.peeps {
+		if peep.IsAlive() {
+			Log("%%%%", peep.ID(), peep.Location())
+		}
+	}
+	Log(strings.Repeat("*", 40))
 }

@@ -21,11 +21,11 @@ type Peep struct {
 	age      PeepAge
 	isalive  bool
 	gender   PeepGender
-	location Location
+	location *Location
 }
 
 // NewPeep creates and returns a new peep
-func (w *World) NewPeep(gender PeepGender, location Location) (*Peep, error) {
+func (w *World) NewPeep(gender PeepGender, location *Location) (*Peep, error) {
 	// MaxPeeps already
 	if w.AlivePeeps() >= w.settings.MaxPeeps {
 		return nil, fmt.Errorf("cannot create new peep, MaxPeeps already present")
@@ -54,12 +54,12 @@ func (peep *Peep) String() string {
 }
 
 // Location returns the peep's location
-func (peep *Peep) Location() Location {
+func (peep *Peep) Location() *Location {
 	return peep.location
 }
 
 // SetLocation sets a peep's location
-func (peep *Peep) SetLocation(l Location) error {
+func (peep *Peep) SetLocation(l *Location) error {
 	peep.location = l
 	return nil
 }

@@ -114,7 +114,7 @@ func (w *World) randomPeep() error {
 	}
 
 	// Something at origin
-	e := w.grid.objects.GetByLocation(Location{0, 0, 0})
+	e := w.grid.objects.GetByLocation(&Location{0, 0, 0})
 
 	if e != nil && w.IsAlive(e.ID()) {
 		return fmt.Errorf("cannot crate new peep, origin taken by: %v", e.ID())
@@ -122,7 +122,7 @@ func (w *World) randomPeep() error {
 
 	probability := w.settings.NewPeep - (float64(w.AlivePeeps()) / w.settings.NewPeepModifier)
 	if rand.Float64() < probability {
-		w.NewPeep("", Location{})
+		w.NewPeep("", &Location{})
 	}
 	return nil
 }

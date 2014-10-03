@@ -38,6 +38,16 @@ func (l *Location) SameAs(other *Location) bool {
 
 }
 
+// NewLocation returns a new location at origin
+func NewLocation() *Location {
+	return &Location{0, 0, 0}
+}
+
+// NewLocationXYZ returns a new location at x,y,z
+func NewLocationXYZ(x, y, z int32) *Location {
+	return &Location{x, y, z}
+}
+
 // Size specifies the world size
 // termbox starts at (0, 0) upper-left.
 type Size struct {
@@ -85,7 +95,7 @@ func (w *World) LocationNeighbors(l *Location) []*Location {
 
 	for _, x := range []int32{-1, 0, 1} {
 		for _, y := range []int32{-1, 0, 1} {
-			newLoc := &Location{l.X + x, l.Y + y, l.Z}
+			newLoc := NewLocationXYZ(l.X+x, l.Y+y, l.Z)
 			if newLoc.SameAs(l) {
 				continue // skip our own location
 			}
@@ -110,15 +120,25 @@ func (w *World) FindEmptyLocation(locations ...*Location) (*Location, error) {
 	return nil, fmt.Errorf("No available locations next to %v", locations)
 }
 
+// OfSpawnAge returns true of Exister is old enough to spawn
+func (w *World) OfSpawnAge(e Exister) bool {
+	return e.Age() >= w.settings.SpawnAge
+}
+
 // SameGenderSpawn makes a new peep next to one of the provided peeps, if they are of the same gender
 func (w *World) SameGenderSpawn(left, right Exister) {
+	Log("Checking123")
 	if left.Gender() == right.Gender() {
-		newLocation, err := w.FindEmptyLocation(left.Location(), right.Location())
-		if err == nil {
-			if rand.Float64() < w.settings.SpawnProbability {
-				w.NewPeep(left.Gender(), newLocation)
-			}
+		Log("Checking")
+		if w.OfSpawnAge(left) && w.OfSpawnAge(right) {
+			Log("Spawning!")
+			newLocation, err := w.FindEmptyLocation(left.Location(), right.Location())
+			if err == nil {
+				if rand.Float64() < w.settings.SpawnProbability {
+					w.NewPeep(left.Gender(), newLocation)
+				}
 
+			}
 		}
 	}
 }

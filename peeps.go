@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	genders = []PeepGender{"blue", "red", "green", "yellow"}
+	genders = []PeepGender{"blue", "red"}
 )
 
 type PeepAge int64

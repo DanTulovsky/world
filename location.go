@@ -24,12 +24,12 @@ type Location struct {
 	Z int32
 }
 
-func (l *Location) String() string {
+func (l Location) String() string {
 	return fmt.Sprintf("(%v, %v, %v)", l.X, l.Y, l.Z)
 }
 
 // SameAs returns true if two locations are the same
-func (l *Location) SameAs(other *Location) bool {
+func (l Location) SameAs(other Location) bool {
 
 	if l.X == other.X && l.Y == other.Y && l.Z == other.Z {
 		return true
@@ -39,13 +39,13 @@ func (l *Location) SameAs(other *Location) bool {
 }
 
 // NewLocation returns a new location at origin
-func NewLocation() *Location {
-	return &Location{0, 0, 0}
+func NewLocation() Location {
+	return Location{0, 0, 0}
 }
 
 // NewLocationXYZ returns a new location at x,y,z
-func NewLocationXYZ(x, y, z int32) *Location {
-	return &Location{x, y, z}
+func NewLocationXYZ(x, y, z int32) Location {
+	return Location{x, y, z}
 }
 
 // Size specifies the world size
@@ -62,36 +62,45 @@ type Size struct {
 
 // Exister defines an object that exists in the grid
 type Exister interface {
-	Location() (l *Location)
-	SetLocation(l *Location) error
 	ID() string
 	Gender() PeepGender
 	Age() PeepAge
 	IsAlive() bool
 }
 
-// Mover defines an object that can move through the world.
-// Extends Exister
-type Mover interface {
-	Exister
-	MoveX(int32) error
-	MoveY(int32) error
-	MoveZ(int32) error
+// MaxX returns the max X value of the grid that can be occupied
+func (w *World) MaxX() int32 {
+	return w.settings.Size.MaxX - 1
 }
 
-// ExisterFromID returns an exister based on id
-func (w *World) ExisterFromID(id string) Exister {
-	for _, p := range w.peeps {
-		if p.ID() == id {
-			return p
-		}
-	}
-	return nil
+// MaxY returns the max X value of the grid that can be occupied
+func (w *World) MaxY() int32 {
+	return w.settings.Size.MaxY - 1
+}
+
+// MaxZ returns the max Z value of the grid that can be occupied
+func (w *World) MaxZ() int32 {
+	return w.settings.Size.MaxZ
+}
+
+// MinX returns the min X value of the grid that can be occupied
+func (w *World) MinX() int32 {
+	return w.settings.Size.MinX + 1
+}
+
+// MinY returns the min Y value of the grid that can be occupied
+func (w *World) MinY() int32 {
+	return w.settings.Size.MinY + 1
+}
+
+// MinZ returns the min Z value of the grid that can be occupied
+func (w *World) MinZ() int32 {
+	return w.settings.Size.MinZ
 }
 
 // LocationNeighbors returns all neighboring locations to the given one
-func (w *World) LocationNeighbors(l *Location) []*Location {
-	neighbors := []*Location{}
+func (w *World) LocationNeighbors(l Location) []Location {
+	neighbors := []Location{}
 
 	for _, x := range []int32{-1, 0, 1} {
 		for _, y := range []int32{-1, 0, 1} {
@@ -108,7 +117,7 @@ func (w *World) LocationNeighbors(l *Location) []*Location {
 }
 
 // FindEmptyLocation returns an empty location next to one of the provided locations or an error if not able to find one
-func (w *World) FindEmptyLocation(locations ...*Location) (*Location, error) {
+func (w *World) FindEmptyLocation(locations ...Location) (Location, error) {
 	for _, l := range locations {
 		neighbors := w.LocationNeighbors(l)
 		for _, n := range neighbors {
@@ -117,7 +126,7 @@ func (w *World) FindEmptyLocation(locations ...*Location) (*Location, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("No available locations next to %v", locations)
+	return Location{}, fmt.Errorf("No available locations next to %v", locations)
 }
 
 // OfSpawnAge returns true of Exister is old enough to spawn
@@ -126,13 +135,18 @@ func (w *World) OfSpawnAge(e Exister) bool {
 }
 
 // SameGenderSpawn makes a new peep next to one of the provided peeps, if they are of the same gender
-func (w *World) SameGenderSpawn(left, right Exister) {
-	Log("Checking123")
+func (w *World) SameGenderSpawn(left, right Exister) error {
 	if left.Gender() == right.Gender() {
-		Log("Checking")
 		if w.OfSpawnAge(left) && w.OfSpawnAge(right) {
-			Log("Spawning!")
-			newLocation, err := w.FindEmptyLocation(left.Location(), right.Location())
+			var locLeft, locRight Location
+			var err error
+			if locLeft, err = w.ExisterLocation(left); err != nil {
+				return fmt.Errorf("Exister %v does not exist...", left)
+			}
+			if locRight, err = w.ExisterLocation(right); err != nil {
+				return fmt.Errorf("Exister %v does not exist...", right)
+			}
+			newLocation, err := w.FindEmptyLocation(locLeft, locRight)
 			if err == nil {
 				if rand.Float64() < w.settings.SpawnProbability {
 					w.NewPeep(left.Gender(), newLocation)
@@ -141,21 +155,31 @@ func (w *World) SameGenderSpawn(left, right Exister) {
 			}
 		}
 	}
+	return nil
 }
 
 // DiffGenderSpawn makes a new peep next to one of the provided peeps, if they are of a different gender
-func (w *World) DiffGenderSpawn(left, right Exister) {
+func (w *World) DiffGenderSpawn(left, right Exister) error {
 	if left.Gender() != right.Gender() {
-		newLocation, err := w.FindEmptyLocation(left.Location(), right.Location())
+		var locLeft, locRight Location
+		var err error
+		if locLeft, err = w.ExisterLocation(left); err != nil {
+			return fmt.Errorf("Exister %v does not exist...", left)
+		}
+		if locRight, err = w.ExisterLocation(right); err != nil {
+			return fmt.Errorf("Exister %v does not exist...", right)
+		}
+		newLocation, err := w.FindEmptyLocation(locLeft, locRight)
 		if err == nil {
 			if rand.Float64() < w.settings.SpawnProbability {
 				w.NewPeep("", newLocation)
 			}
 		}
 	}
+	return nil
 }
 
-// Meet is called when two Movers bump into each other
+// Meet is called when two Existers bump into each other
 func (w *World) Meet(left, right Exister) {
 	// If they are of the same gender, they spawn a new one (yes yes, I know it's backwards)
 	w.SameGenderSpawn(left, right)
@@ -165,10 +189,14 @@ func (w *World) Meet(left, right Exister) {
 
 }
 
-// IsOccupiedLocation returns True if the given Location is occupied by something alive
-func (w *World) IsOccupiedLocation(l *Location) bool {
-	e := w.grid.objects.GetByLocation(l)
+// LocationExister return an exister at the location
+func (w *World) LocationExister(l Location) Exister {
+	return w.grid.objects.GetByLocation(l)
+}
 
+// IsOccupiedLocation returns True if the given Location is occupied by something alive
+func (w *World) IsOccupiedLocation(l Location) bool {
+	e := w.LocationExister(l)
 	if e == nil {
 		return false
 	}
@@ -181,19 +209,18 @@ func (w *World) IsOccupiedLocation(l *Location) bool {
 // UpdateGrid updates a location on the world grid with the current occupant
 // If cell is already occupied, call Meet function and return an error.
 // A dead peep is not an occupant
-func (w *World) UpdateGrid(m Mover, src *Location, dst *Location) error {
-	if src == dst {
-
+func (w *World) UpdateGrid(e Exister, src Location, dst Location) error {
+	if src.SameAs(dst) {
 		// Set explicitly again to catch new peeps being created
-		w.grid.objects.Set(m, src)
+		w.grid.objects.Set(e, src)
 		return nil
 	}
 	// Check if someone else is already squatting here
 	if w.IsOccupiedLocation(dst) {
 		squatter := w.grid.objects.GetByLocation(dst)
-		if squatter != nil && squatter.ID() != m.ID() {
+		if squatter != nil && squatter.ID() != e.ID() {
 			// We have a meeting, perhaps something happens here
-			w.Meet(m, squatter)
+			w.Meet(e, squatter)
 			return fmt.Errorf("Location (%v) taken by: %v", src, squatter.ID())
 		}
 	}
@@ -204,13 +231,13 @@ func (w *World) UpdateGrid(m Mover, src *Location, dst *Location) error {
 	}
 
 	w.grid.objects.DelByLocation(src)
-	w.grid.objects.Set(m, dst)
+	w.grid.objects.Set(e, dst)
 
 	return nil
 }
 
 // CheckOutsideGrid return error if the move would place object outside grid.
-func (w *World) CheckMovementOutsideGrid(src *Location, x, y, z int32) error {
+func (w *World) CheckMovementOutsideGrid(src Location, x, y, z int32) error {
 	newX := src.X + x
 	newY := src.Y + y
 	newZ := src.Z + z
@@ -233,32 +260,23 @@ func (w *World) CheckOutsideGrid(x, y, z int32) error {
 	return nil
 }
 
+func (w *World) ExisterLocation(e Exister) (Location, error) {
+	return w.grid.objects.GetByExister(e)
+}
+
 // Move moves a mover in direction and magnitude specified.
-// All three must succeed.
-func (w *World) Move(m Mover, x, y, z int32) error {
-	// Save current location
-	src := m.Location()
+func (w *World) Move(e Exister, x, y, z int32) error {
+	var src, dst Location
+	var err error
+	if src, err = w.ExisterLocation(e); err != nil {
+		return fmt.Errorf("Exister %v not found on grid.", e)
+	}
 	if err := w.CheckMovementOutsideGrid(src, x, y, z); err != nil {
 		return err
 	}
 
-	if err := m.MoveX(x); err != nil {
-		m.SetLocation(src)
-		return err
-	}
-	if err := m.MoveY(y); err != nil {
-		m.SetLocation(src)
-		return err
-	}
-	if err := m.MoveZ(z); err != nil {
-		m.SetLocation(src)
-		return err
-	}
-
-	// On success, update the Grid
-	dst := m.Location()
-	if err := w.UpdateGrid(m, src, dst); err != nil {
-		m.SetLocation(src)
+	dst = NewLocationXYZ(src.X+x, src.Y+y, src.Z+z)
+	if err := w.UpdateGrid(e, src, dst); err != nil {
 		return err
 	}
 	return nil

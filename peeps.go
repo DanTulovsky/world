@@ -1,7 +1,6 @@
 package world
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -17,15 +16,14 @@ type PeepAge int64
 type PeepGender string
 
 type Peep struct {
-	id       string // unique id
-	age      PeepAge
-	isalive  bool
-	gender   PeepGender
-	location *Location
+	id      string // unique id
+	age     PeepAge
+	isalive bool
+	gender  PeepGender
 }
 
 // NewPeep creates and returns a new peep
-func (w *World) NewPeep(gender PeepGender, location *Location) (*Peep, error) {
+func (w *World) NewPeep(gender PeepGender, location Location) (*Peep, error) {
 	// MaxPeeps already
 	if w.AlivePeeps() >= w.settings.MaxPeeps {
 		return nil, fmt.Errorf("cannot create new peep, MaxPeeps already present")
@@ -35,10 +33,9 @@ func (w *World) NewPeep(gender PeepGender, location *Location) (*Peep, error) {
 		gender = genders[rand.Intn(len(genders))]
 	}
 	peep := &Peep{
-		id:       uuid.New(),
-		isalive:  true,
-		gender:   gender,
-		location: location,
+		id:      uuid.New(),
+		isalive: true,
+		gender:  gender,
 	}
 	w.peeps = append(w.peeps, peep)
 	w.UpdateGrid(peep, location, location)
@@ -53,36 +50,36 @@ func (peep *Peep) String() string {
 	return fmt.Sprintf("%v age:%v gender:%v", peep.id, peep.age, peep.gender)
 }
 
-// Location returns the peep's location
-func (peep *Peep) Location() *Location {
-	return peep.location
-}
+//// Location returns the peep's location
+//func (peep *Peep) Location() Location {
+//	return peep.location
+//}
 
-// SetLocation sets a peep's location
-func (peep *Peep) SetLocation(l *Location) error {
-	peep.location = l
-	return nil
-}
+//// SetLocation sets a peep's location
+//func (peep *Peep) SetLocation(l Location) error {
+//	peep.location = l
+//	return nil
+//}
 
-// MoveX implements Mover interface
-func (peep *Peep) MoveX(steps int32) error {
-	peep.location.X += steps
-	return nil
-}
+//// MoveX implements Mover interface
+//func (peep *Peep) MoveX(steps int32) error {
+//	peep.location.X += steps
+//	return nil
+//}
 
-// MoveY implements Mover interface
-func (peep *Peep) MoveY(steps int32) error {
-	peep.location.Y += steps
-	return nil
-}
+//// MoveY implements Mover interface
+//func (peep *Peep) MoveY(steps int32) error {
+//	peep.location.Y += steps
+//	return nil
+//}
 
-// MoveZ implements Mover interface
-func (peep *Peep) MoveZ(steps int32) error {
-	if steps != 0 {
-		return errors.New("Peeps can't move up and down!")
-	}
-	return nil
-}
+//// MoveZ implements Mover interface
+//func (peep *Peep) MoveZ(steps int32) error {
+//	if steps != 0 {
+//		return errors.New("Peeps can't move up and down!")
+//	}
+//	return nil
+//}
 
 // IsAlive returns True of peep is alive.
 func (peep *Peep) IsAlive() bool {

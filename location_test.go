@@ -1,6 +1,7 @@
 package world
 
 import (
+	"fmt"
 	"testing"
 
 	termbox "github.com/nsf/termbox-go"
@@ -11,8 +12,8 @@ func genWorld() *World {
 	// Setup
 	s := &Settings{
 		NewPeep:         1,
-		MaxAge:          999,
-		MaxPeeps:        2,
+		MaxAge:          10,
+		MaxPeeps:        10,
 		RandomDeath:     0.0001,
 		NewPeepMax:      2,
 		NewPeepModifier: 1000,
@@ -37,29 +38,73 @@ func TestUpdateGrid(t *testing.T) {
 	w.Show()
 
 	Convey("Cannot move peep2 over peep1", t, func() {
-		So(w.UpdateGrid(peep2, peep2.Location(), peep1.Location()), ShouldNotBeNil)
+		loc1, _ := w.ExisterLocation(peep1)
+		loc2, _ := w.ExisterLocation(peep2)
+		So(w.UpdateGrid(peep2, loc2, loc1), ShouldNotBeNil)
 	})
 	Convey("Can move peep2 to new location", t, func() {
-		So(w.UpdateGrid(peep2, peep2.Location(), NewLocationXYZ(3, 0, 0)), ShouldBeNil)
+		loc2, _ := w.ExisterLocation(peep2)
+		So(w.UpdateGrid(peep2, loc2, NewLocationXYZ(3, 0, 0)), ShouldBeNil)
 	})
 	Convey("Can move peep2 to same location", t, func() {
-		So(w.UpdateGrid(peep2, peep2.Location(), peep2.Location()), ShouldBeNil)
+		loc2, _ := w.ExisterLocation(peep2)
+		So(w.UpdateGrid(peep2, loc2, loc2), ShouldBeNil)
 	})
 	Convey("Cannot move peep2 off the X grid", t, func() {
-		So(w.UpdateGrid(peep2, peep2.Location(), NewLocationXYZ(w.settings.Size.MaxX+1, 0, 0)), ShouldNotBeNil)
-		So(w.UpdateGrid(peep2, peep2.Location(), NewLocationXYZ(w.settings.Size.MinX-1, 0, 0)), ShouldNotBeNil)
+		loc2, _ := w.ExisterLocation(peep2)
+		So(w.UpdateGrid(peep2, loc2, NewLocationXYZ(w.MaxX()+1, 0, 0)), ShouldNotBeNil)
+		So(w.UpdateGrid(peep2, loc2, NewLocationXYZ(w.MinX()-1, 0, 0)), ShouldNotBeNil)
 	})
 	Convey("Cannot move peep2 off the Y grid", t, func() {
-		So(w.UpdateGrid(peep2, peep2.Location(), NewLocationXYZ(0, w.settings.Size.MaxY+1, 0)), ShouldNotBeNil)
-		So(w.UpdateGrid(peep2, peep2.Location(), NewLocationXYZ(0, w.settings.Size.MinY-1, 0)), ShouldNotBeNil)
+		loc2, _ := w.ExisterLocation(peep2)
+		So(w.UpdateGrid(peep2, loc2, NewLocationXYZ(0, w.MaxY()+1, 0)), ShouldNotBeNil)
+		So(w.UpdateGrid(peep2, loc2, NewLocationXYZ(0, w.MinY()-1, 0)), ShouldNotBeNil)
 	})
 	Convey("Cannot move peep2 off the Z grid", t, func() {
-		So(w.UpdateGrid(peep2, peep2.Location(), NewLocationXYZ(0, 0, w.settings.Size.MaxZ+1)), ShouldNotBeNil)
-		So(w.UpdateGrid(peep2, peep2.Location(), NewLocationXYZ(0, 0, w.settings.Size.MinZ-1)), ShouldNotBeNil)
+		loc2, _ := w.ExisterLocation(peep2)
+		So(w.UpdateGrid(peep2, loc2, NewLocationXYZ(0, 0, w.MaxZ()+1)), ShouldNotBeNil)
+		So(w.UpdateGrid(peep2, loc2, NewLocationXYZ(0, 0, w.MinZ()-1)), ShouldNotBeNil)
 	})
-	Convey("Cannot move peep2 off the X grid into wall", t, func() {
-		So(w.UpdateGrid(peep2, peep2.Location(), &Location{w.settings.Size.MaxX, 0, 0}), ShouldNotBeNil)
-		So(w.UpdateGrid(peep2, peep2.Location(), NewLocationXYZ(w.settings.Size.MinX, 0, 0)), ShouldNotBeNil)
+}
+
+func TestMove(t *testing.T) {
+	w := genWorld()
+
+	peep1, _ := w.NewPeep("", NewLocationXYZ(3, 4, 0))
+
+	w.Move(peep1, 1, 0, 0)
+
+	Convey("peep1 moves to location 4, 4, 0", t, func() {
+		loc1, _ := w.ExisterLocation(peep1)
+		So(loc1.SameAs(Location{4, 4, 0}), ShouldBeTrue)
+	})
+
+}
+
+func TestLocationExister(t *testing.T) {
+	w := genWorld()
+	peep1, _ := w.NewPeep("", NewLocationXYZ(3, 4, 0))
+
+	Convey("peep1 is at location (3,4,0)", t, func() {
+		So(w.LocationExister(Location{3, 4, 0}), ShouldEqual, peep1)
+	})
+}
+
+func TestIsOccupiedLocation(t *testing.T) {
+	w := genWorld()
+	peep1, _ := w.NewPeep("", NewLocationXYZ(3, 4, 0))
+
+	Convey("Location (1, 2, 0) is not occupied.", t, func() {
+		So(w.IsOccupiedLocation(Location{1, 2, 0}), ShouldBeFalse)
+	})
+
+	Convey("Location (3, 4, 0) is occupied.", t, func() {
+		So(w.IsOccupiedLocation(Location{3, 4, 0}), ShouldBeTrue)
+	})
+
+	peep1.Die()
+	Convey("Location (1, 2, 0) is not occupied.", t, func() {
+		So(w.IsOccupiedLocation(Location{1, 2, 0}), ShouldBeFalse)
 	})
 
 }
@@ -84,22 +129,25 @@ func TestExisterIcon(t *testing.T) {
 func TestLocationNeighbors(t *testing.T) {
 	w := genWorld()
 
-	loc1 := &Location{0, 0, 0}
+	loc1 := Location{0, 0, 0}
 
 	Convey("Origin should have 8 neightbors", t, func() {
 		So(len(w.LocationNeighbors(loc1)), ShouldEqual, 8)
 	})
 
-	//loc2 := &Location{w.settings.Size.MinX, w.settings.Size.MinY, 0}
-	//Convey("TopLeft should have 3 neightbors", t, func() {
-	//	So(len(w.LocationNeighbors(loc2)), ShouldEqual, 3)
-	//})
+	loc2 := Location{w.MinX(), w.MinY(), 0}
+	fmt.Println("Location: ", loc2)
+	fmt.Println("Neighbors: ", w.LocationNeighbors(loc2))
+
+	Convey("TopLeft should have 3 neightbors", t, func() {
+		So(len(w.LocationNeighbors(loc2)), ShouldEqual, 3)
+	})
 
 }
 
 func TestLocation(t *testing.T) {
-	expected := &Location{1, 2, 3}
-	origin := &Location{}
+	expected := Location{1, 2, 3}
+	origin := Location{}
 
 	Convey("Expecting location(1,2,3) to exist", t, func() {
 		So(NewLocationXYZ(1, 2, 3).SameAs(expected), ShouldBeTrue)
@@ -107,4 +155,80 @@ func TestLocation(t *testing.T) {
 	Convey("Expecting location(0,0,0) to exist", t, func() {
 		So(NewLocation().SameAs(origin), ShouldBeTrue)
 	})
+}
+
+func TestSameAs(t *testing.T) {
+	Convey("Locations are the same", t, func() {
+		So(Location{1, 2, 3}.SameAs(Location{1, 2, 3}), ShouldBeTrue)
+	})
+	Convey("Locations are different", t, func() {
+		So(Location{1, 2, 3}.SameAs(Location{1, 3, 3}), ShouldBeFalse)
+	})
+}
+
+func TestMaxMin(t *testing.T) {
+	w := genWorld()
+
+	Convey("Correct Max values for the world.", t, func() {
+		So(w.MaxX(), ShouldEqual, 9)
+		So(w.MaxY(), ShouldEqual, 9)
+		So(w.MaxZ(), ShouldEqual, 0)
+		So(w.MinX(), ShouldEqual, -9)
+		So(w.MinY(), ShouldEqual, -9)
+		So(w.MinZ(), ShouldEqual, 0)
+	})
+}
+
+// shouldBeInLocations checks that a list of Locations contains a given location
+func shouldBeInLocations(loc interface{}, locList ...interface{}) string {
+	for _, l := range locList {
+		if l.(Location).SameAs(loc.(Location)) {
+			return ""
+		}
+	}
+	return "Error!"
+}
+
+func TestFindEmptyLocation(t *testing.T) {
+	w := genWorld()
+
+	peep1, _ := w.NewPeep("red", NewLocationXYZ(-9, -9, 0))
+	loc, err := w.ExisterLocation(peep1)
+	Convey("Location for peep1 found.", t, func() {
+		So(err, ShouldBeNil)
+	})
+
+	// neighbors := w.LocationNeighbors(loc)
+
+	emptyLoc, err := w.FindEmptyLocation(loc)
+	Convey("Empty location found.", t, func() {
+		So(err, ShouldBeNil)
+		// So(emptyLoc, shouldBeInLocations, neighbors...)  // Why doesn't this work?
+		So(emptyLoc, shouldBeInLocations, Location{-9, -8, 0}, Location{-8, -9, 0}, Location{-8, -8, 0})
+	})
+
+	// Fill up the neighbors
+	for _, l := range w.LocationNeighbors(loc) {
+		w.NewPeep("red", NewLocationXYZ(l.X, l.Y, l.Z))
+	}
+
+	emptyLoc, err = w.FindEmptyLocation(loc)
+	Convey("Empty location not found.", t, func() {
+		So(err, ShouldNotBeNil)
+	})
+
+}
+
+func TestColors(t *testing.T) {
+	w := genWorld()
+	peep1, _ := w.NewPeep("red", NewLocation())
+
+	Convey("Peeps is ColorRed", t, func() {
+		So(w.ExisterFg(peep1), ShouldEqual, termbox.ColorRed)
+	})
+
+	Convey("Peeps is ColorRed", t, func() {
+		So(w.ExisterBg(peep1), ShouldEqual, termbox.ColorDefault)
+	})
+
 }

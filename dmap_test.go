@@ -1,6 +1,7 @@
 package world
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 	"code.google.com/p/go-uuid/uuid"
@@ -21,16 +22,17 @@ func TestGetFunctions(t *testing.T) {
 		isalive: true,
 		gender:  "red",
 	}
-	l := &Location{1, 2, 3}
-	notOccupied := &Location{1, 2, 4}
+	l := Location{1, 2, 3}
+	notOccupied := Location{1, 2, 4}
 
 	// Set maps explicitly
 	dm.mapExister[e] = l
 	dm.mapLocation[l] = e
 
 	Convey("Exister with uid 'test1' exists at location (1, 2, 3) ", t, func() {
-		So(dm.GetByExister(e), ShouldNotBeNil)
-		So(dm.GetByExister(e).SameAs(l), ShouldBeTrue)
+		loc, err := dm.GetByExister(e)
+		So(err, ShouldBeNil)
+		So(loc.SameAs(l), ShouldBeTrue)
 	})
 
 	Convey("Location (1, 2, 3) should contain Exister with uid 'test1'", t, func() {
@@ -42,7 +44,9 @@ func TestGetFunctions(t *testing.T) {
 	})
 
 	Convey("Exister bad should not exist", t, func() {
-		So(dm.GetByExister(bad), ShouldBeNil)
+		loc, err := dm.GetByExister(bad)
+		So(err, ShouldNotBeNil)
+		So(loc.SameAs(Location{}), ShouldBeTrue)
 	})
 }
 
@@ -54,13 +58,14 @@ func TestSetFunctions(t *testing.T) {
 		isalive: true,
 		gender:  "red",
 	}
-	l := &Location{1, 2, 3}
+	l := Location{1, 2, 3}
 
 	dm.Set(e, l)
 
 	Convey("Exister test1 is in the map at location (1, 2, 3)", t, func() {
-		So(dm.GetByExister(e), ShouldNotBeNil)
-		So(dm.GetByExister(e).SameAs(l), ShouldBeTrue)
+		loc, err := dm.GetByExister(e)
+		So(err, ShouldBeNil)
+		So(loc.SameAs(l), ShouldBeTrue)
 		So(dm.GetByLocation(l), ShouldEqual, e)
 	})
 }
@@ -73,21 +78,47 @@ func TestDeleteFunctions(t *testing.T) {
 		isalive: true,
 		gender:  "red",
 	}
-	l := &Location{1, 2, 3}
+	l := Location{1, 2, 3}
 
 	dm.Set(e, l)
 
 	dm.DelByExister(e)
 	Convey("Exister test1 and location (1,2,3) are nil", t, func() {
-		So(dm.GetByExister(e), ShouldBeNil)
+		loc, err := dm.GetByExister(e)
+		So(err, ShouldNotBeNil)
+		So(loc.SameAs(Location{}), ShouldBeTrue)
 		So(dm.GetByLocation(l), ShouldBeNil)
 	})
 
 	dm.Set(e, l)
 	dm.DelByLocation(l)
 	Convey("Exister test1 and location (1,2,3) are nil", t, func() {
-		So(dm.GetByExister(e), ShouldBeNil)
+		loc, err := dm.GetByExister(e)
+		So(err, ShouldNotBeNil)
+		So(loc.SameAs(Location{}), ShouldBeTrue)
 		So(dm.GetByLocation(l), ShouldBeNil)
+	})
+}
+
+func TestAllNonEmptyLocations(t *testing.T) {
+	dm := NewDmap()
+
+	Convey("All locations empty", t, func() {
+		So(dm.AllNonEmptyLocations(), ShouldBeEmpty)
+	})
+
+	e := &Peep{
+		id:      "test1",
+		isalive: true,
+		gender:  "red",
+	}
+	l := Location{1, 2, 3}
+
+	dm.Set(e, l)
+	Convey("Location (1,2,3) in list.", t, func() {
+		So(dm.AllNonEmptyLocations(), ShouldNotBeEmpty)
+		fmt.Println(dm.AllNonEmptyLocations())
+		So(dm.AllNonEmptyLocations(), ShouldResemble, []Location{l})
 	})
 }
 
@@ -101,16 +132,18 @@ func BenchmarkDmap(b *testing.B) {
 			isalive: true,
 			gender:  "red",
 		}
-		l := &Location{rand.Int31n(100), rand.Int31n(100), rand.Int31n(100)}
+		l := Location{rand.Int31n(100), rand.Int31n(100), rand.Int31n(100)}
 
 		dm.Set(e, l)
 		Convey("Exister exists at location", b, func() {
-			So(dm.GetByExister(e), ShouldNotBeNil)
-			So(dm.GetByExister(e).SameAs(l), ShouldBeTrue)
+			loc, err := dm.GetByExister(e)
+			So(err, ShouldBeNil)
+			So(loc.SameAs(l), ShouldBeTrue)
 		})
 		dm.DelByExister(e)
 		Convey("Exister and location are nil", b, func() {
-			So(dm.GetByExister(e), ShouldBeNil)
+			_, err := dm.GetByExister(e)
+			So(err, ShouldNotBeNil)
 			So(dm.GetByLocation(l), ShouldBeNil)
 		})
 	}

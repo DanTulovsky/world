@@ -67,6 +67,7 @@ type Exister interface {
 	Age() PeepAge
 	IsAlive() bool
 	Homebase() Location
+	DeadAtTurn() int64
 }
 
 // MaxX returns the max X value of the grid that can be occupied
@@ -340,9 +341,8 @@ func (w *World) ExisterFg(e Exister) termbox.Attribute {
 
 // ExisterBg returns the correct background color for an Exister
 func (w *World) ExisterBg(e Exister) termbox.Attribute {
-	// Young ones are highlighted in pink < 10 years
-
-	if e.Age() < 10 {
+	// Young ones are highlighted in white < 10 years
+	if e.Age() < w.settings.YoungHightlightAge {
 		return termbox.ColorWhite
 	}
 
@@ -372,22 +372,31 @@ func (w *World) ExisterVisuals(e Exister) *Visuals {
 }
 
 func (w *World) Draw() {
-	//w, h := termbox.Size()
-	//Log(w, h)
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	w.DrawGrid()
 
+	flashVisuals := &Visuals{
+		Char: ' ',
+		Fg:   termbox.ColorMagenta,
+		Bg:   termbox.ColorMagenta,
+	}
+
 	for _, loc := range w.grid.objects.AllNonEmptyLocations() {
 		e := w.grid.objects.GetByLocation(loc)
-		if !e.IsAlive() {
-			continue
-		}
-
 		// Convert our coordinates to termbox
 		termX := int(loc.X) + int(math.Abs(float64(w.settings.Size.MinX)))
 		termY := int(loc.Y) + int(math.Abs(float64(w.settings.Size.MinY)))
-		visuals := w.ExisterVisuals(e)
+		flashForXTurns := int64(3)
 
+		if !e.IsAlive() {
+			// Flash empty squares where peep died for 3 turns
+			if w.turn-e.DeadAtTurn() <= flashForXTurns {
+				termbox.SetCell(termX, termY, flashVisuals.Char, flashVisuals.Fg, flashVisuals.Bg)
+			}
+			continue
+		}
+
+		visuals := w.ExisterVisuals(e)
 		termbox.SetCell(termX, termY, visuals.Char, visuals.Fg, visuals.Bg)
 	}
 	termbox.Flush()

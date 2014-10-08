@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -82,7 +83,7 @@ func (w *World) NextTurn() error {
 			if !peep.IsAlive() {
 				continue
 			}
-			peep.AgeOrDie(w.settings.MaxAge, w.settings.RandomDeath)
+			peep.AgeOrDie(w.settings.MaxAge, w.settings.RandomDeath, w.turn)
 		}
 
 	}
@@ -211,10 +212,19 @@ func (world *World) Show() {
 	fmt.Fprintf(io, "Name: %v\n", world.name)
 	fmt.Fprintf(io, "Turn: %v\n", world.turn)
 	fmt.Fprintf(io, "Peeps: %v/%v\n", world.AlivePeeps(), world.settings.MaxPeeps)
-	fmt.Fprintf(io, "Absolute MaxAge: %v\n", world.settings.MaxAge)
 	fmt.Fprintf(io, "Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
 	fmt.Fprintf(io, "Genders: %v\n", world.PeepGenders())
 
+	fmt.Fprintf(io, "%v\n", strings.Repeat("-", len("Settings")))
+	fmt.Fprintf(io, "Settings\n")
+	fmt.Fprintf(io, "%v\n", strings.Repeat("-", len("Settings")))
+
+	s := reflect.ValueOf(&world.settings).Elem()
+	typeOfT := s.Type()
+	for i := 0; i < s.NumField(); i++ {
+		f := s.Field(i)
+		fmt.Fprintf(io, "%s = %v\n", typeOfT.Field(i).Name, f.Interface())
+	}
 	//Log("World GRID:")
 	//Log(strings.Repeat("*", 40))
 	//for _, peep := range world.peeps {

@@ -103,7 +103,7 @@ func TestIsOccupiedLocation(t *testing.T) {
 		So(w.IsOccupiedLocation(Location{3, 4, 0}), ShouldBeTrue)
 	})
 
-	peep1.Die()
+	peep1.Die(w.turn)
 	Convey("Location (1, 2, 0) is not occupied.", t, func() {
 		So(w.IsOccupiedLocation(Location{1, 2, 0}), ShouldBeFalse)
 	})

@@ -44,7 +44,7 @@ func TestIsAlive(t *testing.T) {
 		So(peep1.Gender(), ShouldEqual, "red")
 	})
 
-	peep1.Die()
+	peep1.Die(w.turn)
 	Convey("peep1 is dead", t, func() {
 		So(peep1.IsAlive(), ShouldBeFalse)
 	})

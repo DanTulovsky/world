@@ -29,6 +29,16 @@ type World struct {
 	grid       *Grid              // Map of coordinates to occupant
 }
 
+// ListContains returns true if Location is in the list.
+func ListContains(list []Location, loc Location) bool {
+	for _, l := range list {
+		if l.SameAs(loc) {
+			return true
+		}
+	}
+	return false
+}
+
 func NewWorld(name string, settings Settings, eventQueue chan termbox.Event) *World {
 	rand.Seed(time.Now().UnixNano())
 	return &World{
@@ -50,6 +60,9 @@ func (w *World) NextTurn() error {
 		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEsc {
 			return errors.New("Exiting...")
 		}
+		if ev.Type == termbox.EventKey && ev.Key == termbox.KeySpace {
+			w.Show()
+		}
 	default:
 		// Redraw screen
 		w.Draw()
@@ -61,7 +74,7 @@ func (w *World) NextTurn() error {
 
 		// New peep might be born
 		if err := w.randomPeep(); err != nil {
-			Log(err)
+			//Log(err)
 		}
 
 		// Age existing peeps
@@ -98,7 +111,7 @@ func (w *World) MovePeeps() {
 
 		//Log(fmt.Sprintf("Moving %v (%v): (%v, %v, %v)", peep.ID(), peep.Location(), x, y, z))
 		if err := w.Move(peep, x, y, z); err != nil {
-			Log(err)
+			//Log(err)
 		}
 	}
 }
@@ -108,18 +121,9 @@ func (w *World) MovePeeps() {
 // As the world grows, probability of this event goes towards 0
 // Subject to world.settings.MaxPeeps
 func (w *World) randomPeep() error {
-	// MaxPeeps already, short circuit here.
-	if w.AlivePeeps() >= w.settings.MaxPeeps || w.AlivePeeps() >= w.settings.NewPeepMax {
-		return fmt.Errorf("cannot create new peep, MaxPeeps already present")
+	if w.AlivePeeps() >= w.settings.NewPeepMax {
+		return fmt.Errorf("Too many peeps (%v) for random spawn.", w.AlivePeeps())
 	}
-
-	// Something at origin
-	e := w.grid.objects.GetByLocation(Location{0, 0, 0})
-
-	if e != nil && e.IsAlive() {
-		return fmt.Errorf("cannot crate new peep, origin taken by: %v", e.ID())
-	}
-
 	probability := w.settings.NewPeep - (float64(w.AlivePeeps()) / w.settings.NewPeepModifier)
 	if rand.Float64() < probability {
 		w.NewPeep("", Location{})

@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	genders = []PeepGender{"blue", "red"}
+	genders  = []PeepGender{"blue", "red", "green", "yellow"}
+	homebase = make(map[PeepGender]Location)
 )
 
 type PeepAge int64
@@ -20,6 +21,14 @@ type Peep struct {
 	age     PeepAge
 	isalive bool
 	gender  PeepGender
+}
+
+func (w *World) Genders() []PeepGender {
+	return genders
+}
+
+func (w *World) SetHomebase(gender PeepGender, loc Location) {
+	homebase[gender] = loc
 }
 
 // NewPeep creates and returns a new peep
@@ -37,6 +46,17 @@ func (w *World) NewPeep(gender PeepGender, location Location) (*Peep, error) {
 		isalive: true,
 		gender:  gender,
 	}
+	// If no specific location set, pick one based on gender
+	if location.SameAs(Location{}) {
+		location = w.SpawnPoint(peep)
+	}
+
+	// Check if spawn point is busy.
+	e := w.grid.objects.GetByLocation(location)
+	if e != nil && e.IsAlive() {
+		return nil, fmt.Errorf("cannot crate new peep, origin taken by: %v", e.ID())
+	}
+
 	w.peeps = append(w.peeps, peep)
 	w.UpdateGrid(peep, location, location)
 	return peep, nil
@@ -50,36 +70,10 @@ func (peep *Peep) String() string {
 	return fmt.Sprintf("%v age:%v gender:%v", peep.id, peep.age, peep.gender)
 }
 
-//// Location returns the peep's location
-//func (peep *Peep) Location() Location {
-//	return peep.location
-//}
-
-//// SetLocation sets a peep's location
-//func (peep *Peep) SetLocation(l Location) error {
-//	peep.location = l
-//	return nil
-//}
-
-//// MoveX implements Mover interface
-//func (peep *Peep) MoveX(steps int32) error {
-//	peep.location.X += steps
-//	return nil
-//}
-
-//// MoveY implements Mover interface
-//func (peep *Peep) MoveY(steps int32) error {
-//	peep.location.Y += steps
-//	return nil
-//}
-
-//// MoveZ implements Mover interface
-//func (peep *Peep) MoveZ(steps int32) error {
-//	if steps != 0 {
-//		return errors.New("Peeps can't move up and down!")
-//	}
-//	return nil
-//}
+// Homebase returns the homebase location given a peep
+func (peep *Peep) Homebase() Location {
+	return homebase[peep.Gender()]
+}
 
 // IsAlive returns True of peep is alive.
 func (peep *Peep) IsAlive() bool {
@@ -98,7 +92,7 @@ func (peep *Peep) AddAge() {
 
 // Die kills the peep
 func (peep *Peep) Die() {
-	Log("Peep: ", peep.ID(), " died!")
+	// Log("Peep: ", peep.ID(), " died!")
 	peep.isalive = false
 }
 

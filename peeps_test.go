@@ -6,12 +6,23 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+func TestNewPeep(t *testing.T) {
+	w := genWorld()
+
+	Convey("NewPeep is born.", t, func() {
+		peep1, err := w.NewPeep("red", Location{})
+		So(err, ShouldBeNil)
+		So(peep1.Gender(), ShouldEqual, "red")
+	})
+}
+
 func TestIsAlive(t *testing.T) {
 	w := genWorld()
 
-	peep1, _ := w.NewPeep("red", NewLocation())
+	peep1, err := w.NewPeep("red", NewLocationXYZ(1, 1, 0))
 
 	Convey("peep1 is alive", t, func() {
+		So(err, ShouldBeNil)
 		So(peep1.IsAlive(), ShouldBeTrue)
 	})
 
@@ -42,8 +53,9 @@ func TestIsAlive(t *testing.T) {
 		So(peep1.IsAlive(), ShouldBeFalse)
 	})
 
-	peep2, _ := w.NewPeep("red", NewLocation())
+	peep2, err := w.NewPeep("red", NewLocationXYZ(3, 3, 0))
 	Convey("peep2 is alive", t, func() {
+		So(err, ShouldBeNil)
 		So(peep2.IsAlive(), ShouldBeTrue)
 	})
 

@@ -28,6 +28,7 @@ type World struct {
 	turn       int64              // the current turn
 	eventQueue chan termbox.Event // for catching user input
 	grid       *Grid              // Map of coordinates to occupant
+	stats      *stats
 }
 
 // ListContains returns true if Location is in the list.
@@ -50,6 +51,7 @@ func NewWorld(name string, settings Settings, eventQueue chan termbox.Event) *Wo
 			size:    settings.Size,
 			objects: NewDmap(), // empty grid
 		},
+		stats: newStats(),
 	}
 }
 
@@ -68,6 +70,9 @@ func (w *World) NextTurn() error {
 			w.ShowSettings()
 		}
 	default:
+		// Update stats
+		w.stats.peeps.Update(w.AlivePeeps())
+
 		// Redraw screen
 		w.Draw()
 

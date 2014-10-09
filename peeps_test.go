@@ -16,6 +16,22 @@ func TestNewPeep(t *testing.T) {
 	})
 }
 
+func TestMeetings(t *testing.T) {
+	w := genWorld()
+
+	peep1, _ := w.NewPeep("red", Location{1, 2, 0})
+	peep2, _ := w.NewPeep("red", Location{1, 1, 0})
+
+	Convey("peep1 meets peep2 at turn 1.", t, func() {
+		peep1.Meet(peep2, 1)
+		So(peep1.Met()[peep2], ShouldEqual, 1)
+		// So(peep2.Met()[peep1], ShouldEqual, 1)
+
+		So(peep1.MetPeep(peep2), ShouldBeTrue)
+		// So(peep2.MetPeep(peep1), ShouldBeTrue)
+	})
+}
+
 func TestIsAlive(t *testing.T) {
 	w := genWorld()
 

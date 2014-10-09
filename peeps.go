@@ -21,7 +21,8 @@ type Peep struct {
 	age        PeepAge
 	isalive    bool
 	gender     PeepGender
-	deadAtTurn int64 // World turn when the peep died
+	deadAtTurn int64             // World turn when the peep died
+	met        map[Exister]int64 // records all other existers and the turn met
 }
 
 func (w *World) Genders() []PeepGender {
@@ -46,6 +47,7 @@ func (w *World) NewPeep(gender PeepGender, location Location) (*Peep, error) {
 		id:      uuid.New(),
 		isalive: true,
 		gender:  gender,
+		met:     make(map[Exister]int64),
 	}
 	// If no specific location set, pick one based on gender
 	if location.SameAs(Location{}) {
@@ -93,6 +95,25 @@ func (peep *Peep) DeadAtTurn() int64 {
 // AddAge increases the age of the peep by 1
 func (peep *Peep) AddAge() {
 	peep.age++
+}
+
+// Meet records a meeting between peep and other
+// This records both sides
+func (peep *Peep) Meet(other Exister, turn int64) {
+	peep.met[other] = turn
+}
+
+// Met returns all the existers this one met, and the turn.
+func (peep *Peep) Met() map[Exister]int64 {
+	return peep.met
+}
+
+// MetPeep returns true if two peeps have met
+func (peep *Peep) MetPeep(other Exister) bool {
+	if _, ok := peep.met[other]; ok {
+		return true
+	}
+	return false
 }
 
 // Die kills the peep

@@ -68,6 +68,9 @@ type Exister interface {
 	IsAlive() bool
 	Homebase() Location
 	DeadAtTurn() int64
+	Met() map[Exister]int64 // Map of exister to turn when met
+	Meet(Exister, int64)
+	MetPeep(Exister) bool // Whether the two have met
 }
 
 // MaxX returns the max X value of the grid that can be occupied
@@ -204,8 +207,14 @@ func (w *World) DiffGenderSpawn(left, right Exister) error {
 
 // Meet is called when two Existers bump into each other
 func (w *World) Meet(left, right Exister) {
+	left.Meet(right, w.turn)
+	right.Meet(left, w.turn)
+
 	// If they are of the same gender, they spawn a new one (yes yes, I know it's backwards)
-	w.SameGenderSpawn(left, right)
+	// Spawns only happen the first time peeps meet
+	if !left.MetPeep(right) && !right.MetPeep(left) { // no need to check both?
+		w.SameGenderSpawn(left, right)
+	}
 
 	// If they are of a different gender, they spawn a random child.
 	//w.DiffGenderSpawn(left, right)

@@ -64,6 +64,9 @@ func (w *World) NextTurn() error {
 		if ev.Type == termbox.EventKey && ev.Key == termbox.KeySpace {
 			w.Show()
 		}
+		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyCtrlS {
+			w.ShowSettings()
+		}
 	default:
 		// Redraw screen
 		w.Draw()
@@ -215,6 +218,20 @@ func (world *World) Show() {
 	fmt.Fprintf(io, "Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
 	fmt.Fprintf(io, "Genders: %v\n", world.PeepGenders())
 
+	//Log("World GRID:")
+	//Log(strings.Repeat("*", 40))
+	//for _, peep := range world.peeps {
+	//	if peep.IsAlive() {
+	//		Log("%%%%", peep.ID(), peep.Location())
+	//	}
+	//}
+	//Log(strings.Repeat("*", 40))
+}
+
+// String prints world information.
+func (world *World) ShowSettings() {
+	io := os.Stderr
+
 	fmt.Fprintf(io, "%v\n", strings.Repeat("-", len("Settings")))
 	fmt.Fprintf(io, "Settings\n")
 	fmt.Fprintf(io, "%v\n", strings.Repeat("-", len("Settings")))
@@ -225,12 +242,4 @@ func (world *World) Show() {
 		f := s.Field(i)
 		fmt.Fprintf(io, "%s = %v\n", typeOfT.Field(i).Name, f.Interface())
 	}
-	//Log("World GRID:")
-	//Log(strings.Repeat("*", 40))
-	//for _, peep := range world.peeps {
-	//	if peep.IsAlive() {
-	//		Log("%%%%", peep.ID(), peep.Location())
-	//	}
-	//}
-	//Log(strings.Repeat("*", 40))
 }

@@ -9,11 +9,12 @@ type Settings struct {
 
 	// The lower this number, the less chance a new peep will show up as the population grows
 	// At 1, new random peeps will almost never show up
-	NewPeepModifier  float64
-	NewPeepMax       int64         // When this many peeps exist, no new peeps are spawned from origin
-	RandomDeath      float64       // chances of a random death
-	Size             *Size         // world size, one line is used as the border around
-	SpawnAge         PeepAge       // Minimum age to spaw
-	SpawnProbability float64       // chances of two peeps that meet spawning a new one
-	TurnTime         time.Duration // How fast is each turn?
+	NewPeepModifier    float64
+	NewPeepMax         int64         // When this many peeps exist, no new peeps are spawned from origin
+	RandomDeath        float64       // chances of a random death
+	Size               *Size         // world size, one line is used as the border around
+	SpawnAge           PeepAge       // Minimum age to spaw
+	SpawnProbability   float64       // chances of two peeps that meet spawning a new one
+	TurnTime           time.Duration // How fast is each turn?
+	YoungHightlightAge PeepAge       // Up to this age, peeps are highlighted in the GUI
 }

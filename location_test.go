@@ -13,11 +13,12 @@ func genWorld() *World {
 	s := &Settings{
 		NewPeep:         1,
 		MaxAge:          10,
-		MaxPeeps:        10,
+		MaxPeeps:        20,
 		RandomDeath:     0.0001,
 		NewPeepMax:      2,
 		NewPeepModifier: 1000,
 		Size:            &Size{10, 10, 0, -10, -10, 0},
+		SpawnAge:        5,
 	}
 
 	// Listen for input events on keyboard, required to test
@@ -102,7 +103,7 @@ func TestIsOccupiedLocation(t *testing.T) {
 		So(w.IsOccupiedLocation(Location{3, 4, 0}), ShouldBeTrue)
 	})
 
-	peep1.Die()
+	peep1.Die(w.turn)
 	Convey("Location (1, 2, 0) is not occupied.", t, func() {
 		So(w.IsOccupiedLocation(Location{1, 2, 0}), ShouldBeFalse)
 	})
@@ -230,5 +231,51 @@ func TestColors(t *testing.T) {
 	Convey("Peeps is ColorRed", t, func() {
 		So(w.ExisterBg(peep1), ShouldEqual, termbox.ColorDefault)
 	})
+}
 
+func TestSpawnLocations(t *testing.T) {
+	w := genWorld()
+
+	locations := w.SpawnLocations()
+
+	Convey("Correct spawn locations present.", t, func() {
+		So(ListContains(locations, Location{9, 9, 0}), ShouldBeTrue)
+		So(ListContains(locations, Location{-9, -9, 0}), ShouldBeTrue)
+		So(ListContains(locations, Location{9, -9, 0}), ShouldBeTrue)
+		So(ListContains(locations, Location{-9, 9, 0}), ShouldBeTrue)
+	})
+}
+
+func TestSameGenderSpawn(t *testing.T) {
+
+	w := genWorld()
+
+	left, _ := w.NewPeep("red", Location{1, 1, 0})
+	right, _ := w.NewPeep("red", Location{1, 0, 0})
+	wrong, _ := w.NewPeep("blue", Location{1, -1, 0})
+
+	Convey("Different genders don't spawn.", t, func() {
+		So(w.SameGenderSpawn(left, wrong), ShouldNotBeNil)
+	})
+
+	Convey("Not of spawn age, no spawn.", t, func() {
+		So(w.SameGenderSpawn(left, right), ShouldNotBeNil)
+	})
+
+	Convey("Same gender of spawn age spawn", t, func() {
+		left.age = w.settings.SpawnAge + 1
+		right.age = w.settings.SpawnAge + 1
+		So(w.SameGenderSpawn(left, right), ShouldBeNil)
+	})
+
+	Convey("No empty location, no spawn", t, func() {
+		// Populate all available locations around
+		for _, loc := range []Location{Location{1, 1, 0}, Location{1, 0, 0}} {
+			for _, l := range w.LocationNeighbors(loc) {
+				w.NewPeep("red", l)
+			}
+		}
+		So(w.SameGenderSpawn(left, right), ShouldNotBeNil)
+
+	})
 }

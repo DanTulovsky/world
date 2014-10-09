@@ -66,6 +66,8 @@ type Exister interface {
 	Gender() PeepGender
 	Age() PeepAge
 	IsAlive() bool
+	Homebase() Location
+	DeadAtTurn() int64
 }
 
 // MaxX returns the max X value of the grid that can be occupied
@@ -96,6 +98,22 @@ func (w *World) MinY() int32 {
 // MinZ returns the min Z value of the grid that can be occupied
 func (w *World) MinZ() int32 {
 	return w.settings.Size.MinZ
+}
+
+// SpawnLocations returns all locations available for spawning
+func (w *World) SpawnLocations() []Location {
+	l := []Location{}
+	// top left
+	l = append(l, Location{w.MinX(), w.MaxY(), 0})
+	// top right
+	l = append(l, Location{w.MaxX(), w.MaxY(), 0})
+
+	// bottom left
+	l = append(l, Location{w.MinX(), w.MinY(), 0})
+	// bottom right
+	l = append(l, Location{w.MaxX(), w.MinY(), 0})
+
+	return l
 }
 
 // LocationNeighbors returns all neighboring locations to the given one
@@ -136,25 +154,30 @@ func (w *World) OfSpawnAge(e Exister) bool {
 
 // SameGenderSpawn makes a new peep next to one of the provided peeps, if they are of the same gender
 func (w *World) SameGenderSpawn(left, right Exister) error {
-	if left.Gender() == right.Gender() {
-		if w.OfSpawnAge(left) && w.OfSpawnAge(right) {
-			var locLeft, locRight Location
-			var err error
-			if locLeft, err = w.ExisterLocation(left); err != nil {
-				return fmt.Errorf("Exister %v does not exist...", left)
-			}
-			if locRight, err = w.ExisterLocation(right); err != nil {
-				return fmt.Errorf("Exister %v does not exist...", right)
-			}
-			newLocation, err := w.FindEmptyLocation(locLeft, locRight)
-			if err == nil {
-				if rand.Float64() < w.settings.SpawnProbability {
-					w.NewPeep(left.Gender(), newLocation)
-				}
-
-			}
-		}
+	if left.Gender() != right.Gender() {
+		return fmt.Errorf("Different genders don't spawn!")
 	}
+	if !w.OfSpawnAge(left) || !w.OfSpawnAge(right) {
+		return fmt.Errorf("Both must be of spawn age!")
+	}
+
+	var locLeft, locRight Location
+	var err error
+	if locLeft, err = w.ExisterLocation(left); err != nil {
+		return fmt.Errorf("Exister %v does not exist...", left)
+	}
+	if locRight, err = w.ExisterLocation(right); err != nil {
+		return fmt.Errorf("Exister %v does not exist...", right)
+	}
+	newLocation, err := w.FindEmptyLocation(locLeft, locRight)
+	if err != nil {
+		return fmt.Errorf("Unable to find empty location next to spawners!")
+	}
+
+	if rand.Float64() < w.settings.SpawnProbability {
+		w.NewPeep(left.Gender(), newLocation)
+	}
+
 	return nil
 }
 
@@ -236,6 +259,11 @@ func (w *World) UpdateGrid(e Exister, src Location, dst Location) error {
 	return nil
 }
 
+// SpawnPoint returns a spawn point for the given Exister
+func (w *World) SpawnPoint(e Exister) Location {
+	return e.Homebase()
+}
+
 // CheckOutsideGrid return error if the move would place object outside grid.
 func (w *World) CheckMovementOutsideGrid(src Location, x, y, z int32) error {
 	newX := src.X + x
@@ -284,7 +312,7 @@ func (w *World) Move(e Exister, x, y, z int32) error {
 
 // ExisterIcon returns the correct icon to use based on criteria defined
 func (w *World) ExisterIcon(e Exister) rune {
-	midAge := w.settings.MaxAge / 2
+	midAge := w.settings.SpawnAge
 
 	// icon is the first character of gender
 	icon := rune(e.Gender()[0])
@@ -305,7 +333,6 @@ func (w *World) ExisterFg(e Exister) termbox.Attribute {
 		return termbox.ColorRed
 	case "green":
 		return termbox.ColorGreen
-
 	case "yellow":
 		return termbox.ColorYellow
 	}
@@ -314,12 +341,11 @@ func (w *World) ExisterFg(e Exister) termbox.Attribute {
 
 // ExisterBg returns the correct background color for an Exister
 func (w *World) ExisterBg(e Exister) termbox.Attribute {
-	//midAge := w.settings.MaxAge / 2
+	// Young ones are highlighted in white < 10 years
+	if e.Age() < w.settings.YoungHightlightAge {
+		return termbox.ColorWhite
+	}
 
-	// Mid-age gets a different background
-	//if e.Age() > midAge {
-	//	return termbox.ColorMagenta
-	//}
 	return termbox.ColorDefault
 }
 
@@ -346,22 +372,31 @@ func (w *World) ExisterVisuals(e Exister) *Visuals {
 }
 
 func (w *World) Draw() {
-	//w, h := termbox.Size()
-	//Log(w, h)
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	w.DrawGrid()
 
+	flashVisuals := &Visuals{
+		Char: ' ',
+		Fg:   termbox.ColorMagenta,
+		Bg:   termbox.ColorMagenta,
+	}
+
 	for _, loc := range w.grid.objects.AllNonEmptyLocations() {
 		e := w.grid.objects.GetByLocation(loc)
-		if !e.IsAlive() {
-			continue
-		}
-
 		// Convert our coordinates to termbox
 		termX := int(loc.X) + int(math.Abs(float64(w.settings.Size.MinX)))
 		termY := int(loc.Y) + int(math.Abs(float64(w.settings.Size.MinY)))
-		visuals := w.ExisterVisuals(e)
+		flashForXTurns := int64(3)
 
+		if !e.IsAlive() {
+			// Flash empty squares where peep died for 3 turns
+			if w.turn-e.DeadAtTurn() <= flashForXTurns {
+				termbox.SetCell(termX, termY, flashVisuals.Char, flashVisuals.Fg, flashVisuals.Bg)
+			}
+			continue
+		}
+
+		visuals := w.ExisterVisuals(e)
 		termbox.SetCell(termX, termY, visuals.Char, visuals.Fg, visuals.Bg)
 	}
 	termbox.Flush()

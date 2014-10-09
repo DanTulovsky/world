@@ -11,14 +11,15 @@ import (
 func genWorld() *World {
 	// Setup
 	s := &Settings{
-		NewPeep:         1,
-		MaxAge:          10,
-		MaxPeeps:        20,
-		RandomDeath:     0.0001,
-		NewPeepMax:      2,
-		NewPeepModifier: 1000,
-		Size:            &Size{10, 10, 0, -10, -10, 0},
-		SpawnAge:        5,
+		NewPeep:          1,
+		MaxAge:           10,
+		MaxPeeps:         20,
+		RandomDeath:      0, // No randomness in tests
+		NewPeepMax:       2,
+		NewPeepModifier:  1000,
+		Size:             &Size{10, 10, 0, -10, -10, 0},
+		SpawnAge:         5,
+		SpawnProbability: 1, // No randomness in tests
 	}
 
 	// Listen for input events on keyboard, required to test
@@ -285,6 +286,7 @@ func TestMeet(t *testing.T) {
 
 	peep1, _ := w.NewPeep("red", Location{1, 2, 0})
 	peep2, _ := w.NewPeep("red", Location{1, 1, 0})
+	peep3, _ := w.NewPeep("red", Location{1, -1, 0})
 
 	Convey("peep1 meets peep2 at turn 1.", t, func() {
 		w.NextTurn()
@@ -294,5 +296,13 @@ func TestMeet(t *testing.T) {
 
 		So(peep1.MetPeep(peep2), ShouldBeTrue)
 		So(peep2.MetPeep(peep1), ShouldBeTrue)
+
+		So(w.AlivePeeps(), ShouldEqual, 4)
+
+		w.Meet(peep1, peep3)
+		So(w.AlivePeeps(), ShouldEqual, 3)
+
+		w.Meet(peep1, peep2)
+		So(w.AlivePeeps(), ShouldEqual, 3)
 	})
 }

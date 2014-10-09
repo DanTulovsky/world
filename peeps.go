@@ -50,37 +50,6 @@ func (peep *Peep) String() string {
 	return fmt.Sprintf("%v age:%v gender:%v", peep.id, peep.age, peep.gender)
 }
 
-//// Location returns the peep's location
-//func (peep *Peep) Location() Location {
-//	return peep.location
-//}
-
-//// SetLocation sets a peep's location
-//func (peep *Peep) SetLocation(l Location) error {
-//	peep.location = l
-//	return nil
-//}
-
-//// MoveX implements Mover interface
-//func (peep *Peep) MoveX(steps int32) error {
-//	peep.location.X += steps
-//	return nil
-//}
-
-//// MoveY implements Mover interface
-//func (peep *Peep) MoveY(steps int32) error {
-//	peep.location.Y += steps
-//	return nil
-//}
-
-//// MoveZ implements Mover interface
-//func (peep *Peep) MoveZ(steps int32) error {
-//	if steps != 0 {
-//		return errors.New("Peeps can't move up and down!")
-//	}
-//	return nil
-//}
-
 // IsAlive returns True of peep is alive.
 func (peep *Peep) IsAlive() bool {
 	return peep.isalive

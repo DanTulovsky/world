@@ -8,17 +8,23 @@ import (
 )
 
 type stats struct {
-	peeps metrics.Gauge
+	peepsAlive metrics.Gauge
+	peepsDead  metrics.Gauge
+	ages       metrics.Histogram
 }
 
 func newStats() *stats {
 	r := metrics.NewRegistry()
 
 	stats := &stats{
-		peeps: metrics.NewGauge(),
+		peepsAlive: metrics.NewGauge(),
+		peepsDead:  metrics.NewGauge(),
+		ages:       metrics.NewHistogram(metrics.NewUniformSample(1028)),
 	}
 
-	r.Register("peeps", stats.peeps)
+	r.Register("peeps_alive", stats.peepsAlive)
+	r.Register("peeps_dead", stats.peepsDead)
+	r.Register("ages", stats.ages)
 
 	// go metrics.Log(metrics.DefaultRegistry, time.Second*1, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 

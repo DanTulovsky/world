@@ -128,17 +128,18 @@ func (peep *Peep) Gender() PeepGender {
 	return peep.gender
 }
 
-// AgeOrDie ages a peep or kills him
-// based on age and probability
-func (peep *Peep) AgeOrDie(maxage PeepAge, randomdeath float64, turn int64) {
+// AgeOrDie ages a peep or kills him based on age and probability
+// An error is return on death
+func (peep *Peep) AgeOrDie(maxage PeepAge, randomdeath float64, turn int64) (PeepAge, error) {
 	if peep.age >= maxage {
 		peep.Die(turn)
-		return
+		return peep.Age(), fmt.Errorf("Peep died, too old...")
 	}
 	// Older peeps have more chances to die
 	if rand.Float64() < randomdeath+(math.Log10(float64(peep.age))/float64(maxage/1)) {
 		peep.Die(turn)
-		return
+		return peep.Age(), fmt.Errorf("Peep died, randomness sucks...")
 	}
 	peep.AddAge()
+	return peep.Age(), nil
 }

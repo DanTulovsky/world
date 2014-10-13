@@ -2,6 +2,7 @@ package world
 
 import (
 	"fmt"
+	"math"
 	"testing"
 
 	termbox "github.com/nsf/termbox-go"
@@ -11,12 +12,12 @@ import (
 func genWorld() *World {
 	// Setup
 	s := &Settings{
-		NewPeep:          1,
+		NewPeep:          0, // no randomness in tests
 		MaxAge:           10,
 		MaxPeeps:         20,
 		RandomDeath:      0, // No randomness in tests
-		NewPeepMax:       2,
-		NewPeepModifier:  1000,
+		NewPeepMax:       0, // No randomness in tests
+		NewPeepModifier:  0, // no randomness in tests
 		Size:             &Size{10, 10, 0, -10, -10, 0},
 		SpawnAge:         5,
 		SpawnProbability: 1, // No randomness in tests
@@ -283,13 +284,19 @@ func TestSameGenderSpawn(t *testing.T) {
 
 func TestMeet(t *testing.T) {
 	w := genWorld()
+	w.settings.SpawnAge = 0
 
 	peep1, _ := w.NewPeep("red", Location{1, 2, 0})
 	peep2, _ := w.NewPeep("red", Location{1, 1, 0})
 	peep3, _ := w.NewPeep("red", Location{1, -1, 0})
 
-	Convey("peep1 meets peep2 at turn 1.", t, func() {
-		w.NextTurn()
+	w.NextTurn()
+
+	Convey("Should have 3 peeps to start.", t, func() {
+		So(w.AlivePeeps(), ShouldEqual, 3)
+	})
+
+	Convey("peep1 and peep2 make a new peep", t, func() {
 		w.Meet(peep1, peep2)
 		So(peep1.Met()[peep2], ShouldEqual, 1)
 		So(peep2.Met()[peep1], ShouldEqual, 1)
@@ -298,11 +305,55 @@ func TestMeet(t *testing.T) {
 		So(peep2.MetPeep(peep1), ShouldBeTrue)
 
 		So(w.AlivePeeps(), ShouldEqual, 4)
-
-		w.Meet(peep1, peep3)
-		So(w.AlivePeeps(), ShouldEqual, 3)
-
-		w.Meet(peep1, peep2)
-		So(w.AlivePeeps(), ShouldEqual, 3)
 	})
+
+	Convey("peep1 and peep3 make a new peep", t, func() {
+		w.Meet(peep1, peep3)
+		So(w.AlivePeeps(), ShouldEqual, 5)
+	})
+
+	Convey("peep1 and peep2 don't make a new peep, they already met.", t, func() {
+		w.Meet(peep1, peep2)
+		So(w.AlivePeeps(), ShouldEqual, 5)
+	})
+
+	Convey("peep1 and peep3 don't make a new peep, they already met.", t, func() {
+		w.Meet(peep1, peep3)
+		So(w.AlivePeeps(), ShouldEqual, 5)
+	})
+
+	Convey("peep2 and peep3 make a new peep", t, func() {
+		w.Meet(peep2, peep3)
+		So(w.AlivePeeps(), ShouldEqual, 6)
+	})
+}
+
+func TestFindAnyEmptyLocation(t *testing.T) {
+	w := genWorld()
+	w.settings.MaxPeeps = 4000
+
+	// +1 for the 0 row,column
+	size := int((math.Abs(float64(w.MinX())) + float64(w.MaxX()) + 1) *
+		(math.Abs(float64(w.MinY())) + float64(w.MaxY()) + 1))
+
+	Convey("Able to fill the entire world!", t, func() {
+		for x := 1; x <= size; x++ {
+			loc, err := w.FindAnyEmptyLocation()
+			So(err, ShouldBeNil)
+
+			_, err = w.NewPeep("", loc)
+			So(err, ShouldBeNil)
+		}
+	})
+
+	Convey("World is full, no more peeps.", t, func() {
+		for x := 1; x <= size; x++ {
+			loc, err := w.FindAnyEmptyLocation()
+			So(err, ShouldNotBeNil)
+
+			_, err = w.NewPeep("", loc)
+			So(err, ShouldNotBeNil)
+		}
+	})
+
 }

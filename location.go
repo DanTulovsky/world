@@ -137,6 +137,20 @@ func (w *World) LocationNeighbors(l Location) []Location {
 	return neighbors
 }
 
+// FindAnyEmptyLocation returns the first empty location it finds.
+func (w *World) FindAnyEmptyLocation() (Location, error) {
+	var z int32 // World is flat for now.
+	for x := w.MinX(); x <= w.MaxX(); x++ {
+		for y := w.MinY(); y <= w.MaxY(); y++ {
+			loc := NewLocationXYZ(x, y, z)
+			if !w.IsOccupiedLocation(loc) {
+				return loc, nil
+			}
+		}
+	}
+	return Location{}, fmt.Errorf("Unable to find empty location!")
+}
+
 // FindEmptyLocation returns an empty location next to one of the provided locations or an error if not able to find one
 func (w *World) FindEmptyLocation(locations ...Location) (Location, error) {
 	for _, l := range locations {

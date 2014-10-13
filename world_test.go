@@ -1,6 +1,7 @@
 package world
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -25,6 +26,41 @@ func TestHomebase(t *testing.T) {
 
 		peep1, _ := w.NewPeep("red", Location{})
 		So(peep1.Homebase().SameAs(loc), ShouldBeTrue)
+	})
+
+}
+
+func TestAliveDeadPeeps(t *testing.T) {
+	w := genWorld() // World can have 361 peeps based on size
+	w.settings.MaxPeeps = 4000
+	w.settings.MaxAge = 4000
+
+	Convey("No peeps in the world.", t, func() {
+		So(w.AlivePeeps(), ShouldEqual, 0)
+		So(w.DeadPeeps(), ShouldEqual, 0)
+	})
+
+	Convey("Accurate count of alive peeps.", t, func() {
+		for x := 1; x < 100; x++ {
+			loc, err := w.FindAnyEmptyLocation()
+			So(err, ShouldBeNil)
+
+			if _, err := w.NewPeep("", loc); err != nil {
+				fmt.Println(err)
+			}
+			So(w.AlivePeeps(), ShouldEqual, x)
+		}
+	})
+
+	Convey("Accurate count of alive/dead peeps.", t, func() {
+		deadPeeps := 0
+		for _, peep := range w.peeps {
+			So(w.DeadPeeps(), ShouldEqual, deadPeeps)
+			So(w.AlivePeeps(), ShouldEqual, len(w.peeps)-deadPeeps)
+			peep.Die(0)
+			deadPeeps++
+
+		}
 	})
 
 }

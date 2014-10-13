@@ -71,7 +71,8 @@ func (w *World) NextTurn() error {
 		}
 	default:
 		// Update stats
-		w.stats.peeps.Update(w.AlivePeeps())
+		w.stats.peepsAlive.Update(w.AlivePeeps())
+		w.stats.peepsDead.Update(w.DeadPeeps())
 
 		// Redraw screen
 		w.Draw()
@@ -91,7 +92,10 @@ func (w *World) NextTurn() error {
 			if !peep.IsAlive() {
 				continue
 			}
-			peep.AgeOrDie(w.settings.MaxAge, w.settings.RandomDeath, w.turn)
+			age, err := peep.AgeOrDie(w.settings.MaxAge, w.settings.RandomDeath, w.turn)
+			if err != nil {
+				w.stats.ages.Update(int64(age))
+			}
 		}
 
 	}
@@ -145,6 +149,17 @@ func (world *World) AlivePeeps() int64 {
 	var peeps int64
 	for _, p := range world.peeps {
 		if p.IsAlive() {
+			peeps++
+		}
+	}
+	return peeps
+}
+
+// DeadPeeps returns the number of dead peeps
+func (world *World) DeadPeeps() int64 {
+	var peeps int64
+	for _, p := range world.peeps {
+		if !p.IsAlive() {
 			peeps++
 		}
 	}
@@ -219,7 +234,7 @@ func (world *World) Show() {
 	fmt.Fprintf(io, "%v\n", strings.Repeat("-", 80))
 	fmt.Fprintf(io, "Name: %v\n", world.name)
 	fmt.Fprintf(io, "Turn: %v\n", world.turn)
-	fmt.Fprintf(io, "Peeps: %v/%v\n", world.AlivePeeps(), world.settings.MaxPeeps)
+	fmt.Fprintf(io, "Peeps Alive/Dead/MaxAlive: %v/%v/%v\n", world.AlivePeeps(), world.DeadPeeps(), world.settings.MaxPeeps)
 	fmt.Fprintf(io, "Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
 	fmt.Fprintf(io, "Genders: %v\n", world.PeepGenders())
 

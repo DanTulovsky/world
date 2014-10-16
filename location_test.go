@@ -26,6 +26,9 @@ func genWorld() *World {
 	// Listen for input events on keyboard, required to test
 	event_queue := make(chan termbox.Event)
 
+	// turn off random moves
+	allowMoves = false
+
 	return NewWorld("Alpha1", *s, event_queue)
 }
 
@@ -37,8 +40,6 @@ func TestUpdateGrid(t *testing.T) {
 
 	// Peep 2
 	peep2, _ := w.NewPeep("", NewLocation())
-
-	w.Show()
 
 	Convey("Cannot move peep2 over peep1", t, func() {
 		loc1, _ := w.ExisterLocation(peep1)

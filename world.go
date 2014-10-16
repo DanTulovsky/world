@@ -3,17 +3,21 @@ package world
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	termbox "github.com/nsf/termbox-go"
 )
 
 var (
-// random = rand.New(rand.NewSource(time.Now().UnixNano()))
+	// random = rand.New(rand.NewSource(time.Now().UnixNano()))
+	allowMoves = true // for testing, turns off random moves.
 )
 
 func Log(txt ...interface{}) {
@@ -64,10 +68,10 @@ func (w *World) NextTurn() error {
 			return errors.New("Exiting...")
 		}
 		if ev.Type == termbox.EventKey && ev.Key == termbox.KeySpace {
-			w.Show()
+			w.Show(os.Stderr)
 		}
 		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyCtrlS {
-			w.ShowSettings()
+			w.ShowSettings(os.Stderr)
 		}
 	default:
 		// Update stats
@@ -80,7 +84,7 @@ func (w *World) NextTurn() error {
 		w.turn++
 
 		// Move peeps around
-		w.MovePeeps()
+		w.MovePeeps(allowMoves)
 
 		// New peep might be born
 		if err := w.randomPeep(); err != nil {
@@ -114,7 +118,10 @@ func (w *World) BestPeepMove(peep *Peep) (int32, int32, int32) {
 }
 
 // MovePeeps moves peeps around every turn
-func (w *World) MovePeeps() {
+func (w *World) MovePeeps(allowMoves bool) {
+	if !allowMoves {
+		return
+	}
 	for _, peep := range w.peeps {
 		// Dead peeps don't move... for now.
 		if !peep.IsAlive() {
@@ -218,9 +225,17 @@ func (w *World) PeepAvgAge() PeepAge {
 	return 0
 }
 
+func (w *World) runWebServer() {
+	r := mux.NewRouter()
+	r.HandleFunc("/", w.HomeHandler)
+	http.Handle("/", r)
+	http.ListenAndServe(":8000", nil)
+}
+
 // Run runs the world.
 func (w *World) Run() {
 	Log("Starting world...")
+	go w.runWebServer()
 }
 
 // Pause pauses the world.
@@ -228,38 +243,39 @@ func (w *World) Pause() {
 
 }
 
-// String prints world information.
-func (world *World) Show() {
-	io := os.Stderr
-	fmt.Fprintf(io, "%v\n", strings.Repeat("-", 80))
-	fmt.Fprintf(io, "Name: %v\n", world.name)
-	fmt.Fprintf(io, "Turn: %v\n", world.turn)
-	fmt.Fprintf(io, "Peeps Alive/Dead/MaxAlive: %v/%v/%v\n", world.AlivePeeps(), world.DeadPeeps(), world.settings.MaxPeeps)
-	fmt.Fprintf(io, "Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
-	fmt.Fprintf(io, "Genders: %v\n", world.PeepGenders())
-
-	//Log("World GRID:")
-	//Log(strings.Repeat("*", 40))
-	//for _, peep := range world.peeps {
-	//	if peep.IsAlive() {
-	//		Log("%%%%", peep.ID(), peep.Location())
-	//	}
-	//}
-	//Log(strings.Repeat("*", 40))
+// ShowGrid prints the grid and its occupants
+func (world *World) ShowGrid(w io.Writer) {
+	fmt.Fprintf(w, "World GRID:\n")
+	fmt.Fprintf(w, "%v\n", strings.Repeat("*", 40))
+	for _, peep := range world.peeps {
+		if peep.IsAlive() {
+			fmt.Fprintf(w, "%v\n", peep.String())
+		}
+	}
+	fmt.Fprintf(w, "%v\n", strings.Repeat("*", 40))
 }
 
 // String prints world information.
-func (world *World) ShowSettings() {
-	io := os.Stderr
+func (world *World) Show(w io.Writer) {
+	fmt.Fprintf(w, "%v\n", strings.Repeat("-", 80))
+	fmt.Fprintf(w, "Name: %v\n", world.name)
+	fmt.Fprintf(w, "Turn: %v\n", world.turn)
+	fmt.Fprintf(w, "Peeps Alive/Dead/MaxAlive: %v/%v/%v\n", world.AlivePeeps(), world.DeadPeeps(), world.settings.MaxPeeps)
+	fmt.Fprintf(w, "Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
+	fmt.Fprintf(w, "Genders: %v\n", world.PeepGenders())
 
-	fmt.Fprintf(io, "%v\n", strings.Repeat("-", len("Settings")))
-	fmt.Fprintf(io, "Settings\n")
-	fmt.Fprintf(io, "%v\n", strings.Repeat("-", len("Settings")))
+}
+
+// String prints world information.
+func (world *World) ShowSettings(w io.Writer) {
+	fmt.Fprintf(w, "%v\n", strings.Repeat("-", len("Settings")))
+	fmt.Fprintf(w, "Settings\n")
+	fmt.Fprintf(w, "%v\n", strings.Repeat("-", len("Settings")))
 
 	s := reflect.ValueOf(&world.settings).Elem()
 	typeOfT := s.Type()
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
-		fmt.Fprintf(io, "%s = %v\n", typeOfT.Field(i).Name, f.Interface())
+		fmt.Fprintf(w, "%s = %v\n", typeOfT.Field(i).Name, f.Interface())
 	}
 }

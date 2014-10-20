@@ -83,8 +83,8 @@ func (w *World) NextTurn() error {
 
 		w.turn++
 
-		// Move peeps around
-		w.MovePeeps(allowMoves)
+		// Peep actions
+		w.doActions()
 
 		// New peep might be born
 		if err := w.randomPeep(); err != nil {
@@ -107,7 +107,7 @@ func (w *World) NextTurn() error {
 }
 
 // BestPeepMove returns the most optimal move for a peep
-func (w *World) BestPeepMove(peep *Peep) (int32, int32, int32) {
+func (w *World) BestPeepMove(e Exister) (int32, int32, int32) {
 	// random for now
 	var x, y, z int32
 	// Peeps can move one square at a time in x, y direction.
@@ -115,25 +115,6 @@ func (w *World) BestPeepMove(peep *Peep) (int32, int32, int32) {
 	x = m[rand.Intn(len(m))]
 	y = m[rand.Intn(len(m))]
 	return x, y, z
-}
-
-// MovePeeps moves peeps around every turn
-func (w *World) MovePeeps(allowMoves bool) {
-	if !allowMoves {
-		return
-	}
-	for _, peep := range w.peeps {
-		// Dead peeps don't move... for now.
-		if !peep.IsAlive() {
-			continue
-		}
-		x, y, z := w.BestPeepMove(peep)
-
-		//Log(fmt.Sprintf("Moving %v (%v): (%v, %v, %v)", peep.ID(), peep.Location(), x, y, z))
-		if err := w.Move(peep, x, y, z); err != nil {
-			//Log(err)
-		}
-	}
 }
 
 // randomPeep creates a new peep at random
@@ -229,7 +210,7 @@ func (w *World) runWebServer() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", w.HomeHandler)
 	http.Handle("/", r)
-	http.ListenAndServe(":8000", nil)
+	http.ListenAndServe(":6001", nil)
 }
 
 // Run runs the world.

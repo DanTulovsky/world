@@ -137,6 +137,20 @@ func (w *World) LocationNeighbors(l Location) []Location {
 	return neighbors
 }
 
+// allLocations returns a list of all available locations
+// may need to support re-sizing in the future
+func (w *World) allLocations() []Location {
+	all := make([]Location, 1)
+
+	var z int32 // World is flat for now.
+	for x := w.MinX(); x <= w.MaxX(); x++ {
+		for y := w.MinY(); y <= w.MaxY(); y++ {
+			all = append(all, NewLocationXYZ(x, y, z))
+		}
+	}
+	return all
+}
+
 // FindAnyEmptyLocation returns the first empty location it finds.
 func (w *World) FindAnyEmptyLocation() (Location, error) {
 	var z int32 // World is flat for now.
@@ -311,6 +325,7 @@ func (w *World) CheckOutsideGrid(x, y, z int32) error {
 	return nil
 }
 
+// ExisterLocation returns a location, given an exister.
 func (w *World) ExisterLocation(e Exister) (Location, error) {
 	return w.grid.objects.GetByExister(e)
 }

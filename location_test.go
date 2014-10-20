@@ -2,6 +2,7 @@ package world
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"testing"
 
@@ -357,4 +358,14 @@ func TestFindAnyEmptyLocation(t *testing.T) {
 		}
 	})
 
+}
+
+func TestAllLocations(t *testing.T) {
+	w := genWorld()
+
+	Convey("Number of locations is: X", t, func() {
+		log.Println(len(w.allLocations()))
+
+		So(len(w.allLocations()), ShouldEqual, 362)
+	})
 }

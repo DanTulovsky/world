@@ -29,11 +29,13 @@ type World struct {
 	peeps      []*Peep // citizens
 	name       string
 	settings   Settings
-	turn       int64              // the current turn
+	turn       Turn               // the current turn
 	eventQueue chan termbox.Event // for catching user input
 	grid       *Grid              // Map of coordinates to occupant
 	stats      *stats
 }
+
+type Turn int64
 
 // ListContains returns true if Location is in the list.
 func ListContains(list []Location, loc Location) bool {
@@ -104,17 +106,6 @@ func (w *World) NextTurn() error {
 
 	}
 	return nil
-}
-
-// BestPeepMove returns the most optimal move for a peep
-func (w *World) BestPeepMove(e Exister) (int32, int32, int32) {
-	// random for now
-	var x, y, z int32
-	// Peeps can move one square at a time in x, y direction.
-	m := []int32{-1, 0, 1}
-	x = m[rand.Intn(len(m))]
-	y = m[rand.Intn(len(m))]
-	return x, y, z
 }
 
 // randomPeep creates a new peep at random

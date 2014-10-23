@@ -17,4 +17,6 @@ type Settings struct {
 	SpawnProbability   float64       // chances of two peeps that meet spawning a new one
 	TurnTime           time.Duration // How fast is each turn?
 	YoungHightlightAge PeepAge       // Up to this age, peeps are highlighted in the GUI
+	PeepRememberTurns  Turn          // How many turns peeps remember their surroundings for
+	PeepViewDistance   int32         // how far they can see
 }

@@ -67,10 +67,14 @@ type Exister interface {
 	Age() PeepAge
 	IsAlive() bool
 	Homebase() Location
-	DeadAtTurn() int64
-	Met() map[Exister]int64 // Map of exister to turn when met
-	Meet(Exister, int64)
+	DeadAtTurn() Turn
+	Met() map[Exister]Turn // Map of exister to turn when met
+	Meet(Exister, Turn)
 	MetPeep(Exister) bool // Whether the two have met
+	SetLookTurn(Turn)     // sets the turn the exister looked around
+	LookTurn() Turn       // last time exister looked around
+	World() *World        // returns pointer to the World this exister inhabits
+	SetNeighbors()        // sets the neighbors around the exister on this turn
 }
 
 // MaxX returns the max X value of the grid that can be occupied
@@ -414,9 +418,9 @@ func (w *World) Draw() {
 	w.DrawGrid()
 
 	flashVisuals := &Visuals{
-		Char: ' ',
+		Char: '☠',
 		Fg:   termbox.ColorMagenta,
-		Bg:   termbox.ColorMagenta,
+		Bg:   termbox.ColorBlack,
 	}
 
 	for _, loc := range w.grid.objects.AllNonEmptyLocations() {
@@ -424,7 +428,7 @@ func (w *World) Draw() {
 		// Convert our coordinates to termbox
 		termX := int(loc.X) + int(math.Abs(float64(w.settings.Size.MinX)))
 		termY := int(loc.Y) + int(math.Abs(float64(w.settings.Size.MinY)))
-		flashForXTurns := int64(3)
+		flashForXTurns := Turn(3)
 
 		if !e.IsAlive() {
 			// Flash empty squares where peep died for 3 turns

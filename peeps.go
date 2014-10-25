@@ -104,7 +104,10 @@ func (p *Peep) SetNeighbors() {
 	locations := getNeighbors([]Location{p.Location()}, 0, p.Location())
 
 	for _, l := range locations {
-		p.neighbors[l] = p.world.LocationExister(l)
+		e := p.world.LocationExister(l)
+		if e.IsAlive() { // don't care about dead existers
+			p.neighbors[l] = e
+		}
 	}
 	Log(p.Neighbors())
 }

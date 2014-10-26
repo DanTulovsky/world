@@ -2,7 +2,6 @@ package world
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"testing"
 
@@ -22,6 +21,7 @@ func genWorld() *World {
 		Size:             &Size{10, 10, 0, -10, -10, 0},
 		SpawnAge:         5,
 		SpawnProbability: 1, // No randomness in tests
+		PeepViewDistance: 2,
 	}
 
 	// Listen for input events on keyboard, required to test
@@ -137,15 +137,15 @@ func TestLocationNeighbors(t *testing.T) {
 	loc1 := Location{0, 0, 0}
 
 	Convey("Origin should have 8 neightbors", t, func() {
-		So(len(w.LocationNeighbors(loc1)), ShouldEqual, 8)
+		So(len(w.LocationNeighbors(loc1, 1)), ShouldEqual, 8)
 	})
 
 	loc2 := Location{w.MinX(), w.MinY(), 0}
 	fmt.Println("Location: ", loc2)
-	fmt.Println("Neighbors: ", w.LocationNeighbors(loc2))
+	fmt.Println("Neighbors: ", w.LocationNeighbors(loc2, 1))
 
 	Convey("TopLeft should have 3 neightbors", t, func() {
-		So(len(w.LocationNeighbors(loc2)), ShouldEqual, 3)
+		So(len(w.LocationNeighbors(loc2, 1)), ShouldEqual, 3)
 	})
 
 }
@@ -213,7 +213,7 @@ func TestFindEmptyLocation(t *testing.T) {
 	})
 
 	// Fill up the neighbors
-	for _, l := range w.LocationNeighbors(loc) {
+	for _, l := range w.LocationNeighbors(loc, 1) {
 		w.NewPeep("red", NewLocationXYZ(l.X, l.Y, l.Z))
 	}
 
@@ -275,7 +275,7 @@ func TestSameGenderSpawn(t *testing.T) {
 	Convey("No empty location, no spawn", t, func() {
 		// Populate all available locations around
 		for _, loc := range []Location{Location{1, 1, 0}, Location{1, 0, 0}} {
-			for _, l := range w.LocationNeighbors(loc) {
+			for _, l := range w.LocationNeighbors(loc, 1) {
 				w.NewPeep("red", l)
 			}
 		}
@@ -364,8 +364,42 @@ func TestAllLocations(t *testing.T) {
 	w := genWorld()
 
 	Convey("Number of locations is: X", t, func() {
-		log.Println(len(w.allLocations()))
-
 		So(len(w.allLocations()), ShouldEqual, 362)
+	})
+}
+
+func TestTotalNeighbors(t *testing.T) {
+	w := genWorld()
+
+	l := Location{0, 0, 0}
+
+	Convey("Origin has 8 neighbors with viewDistance of 0", t, func() {
+		So(w.totalNeighbors(l, 0), ShouldEqual, 0)
+	})
+
+	Convey("Origin has 8 neighbors with viewDistance of 1", t, func() {
+		So(w.totalNeighbors(l, 1), ShouldEqual, 8)
+	})
+
+	Convey("Origin has 24 neighbors with viewDistance of 2", t, func() {
+		So(w.totalNeighbors(l, 2), ShouldEqual, 24)
+	})
+}
+
+func TestTotalNeighborsCorner(t *testing.T) {
+	w := genWorld()
+
+	l := Location{w.MinX(), w.MinY(), 0}
+
+	Convey("Corner has 0 neighbors with viewDistance of 0", t, func() {
+		So(w.totalNeighbors(l, 0), ShouldEqual, 0)
+	})
+
+	Convey("Corner has 3 neighbors with viewDistance of 1", t, func() {
+		So(w.totalNeighbors(l, 1), ShouldEqual, 3)
+	})
+
+	Convey("Corner has 8 neighbors with viewDistance of 2", t, func() {
+		So(w.totalNeighbors(l, 2), ShouldEqual, 8)
 	})
 }

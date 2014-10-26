@@ -123,12 +123,12 @@ func (w *World) SpawnLocations() []Location {
 	return l
 }
 
-// LocationNeighbors returns all neighboring locations to the given one
-func (w *World) LocationNeighbors(l Location) []Location {
+// LocationNeighbors returns all neighboring locations to the given one within the viewDistance
+func (w *World) LocationNeighbors(l Location, viewDistance int32) []Location {
 	neighbors := []Location{}
 
-	for _, x := range []int32{-1, 0, 1} {
-		for _, y := range []int32{-1, 0, 1} {
+	for x := -viewDistance; x <= viewDistance; x++ {
+		for y := -viewDistance; y <= viewDistance; y++ {
 			newLoc := NewLocationXYZ(l.X+x, l.Y+y, l.Z)
 			if newLoc.SameAs(l) {
 				continue // skip our own location
@@ -138,6 +138,7 @@ func (w *World) LocationNeighbors(l Location) []Location {
 			}
 		}
 	}
+
 	return neighbors
 }
 
@@ -172,7 +173,7 @@ func (w *World) FindAnyEmptyLocation() (Location, error) {
 // FindEmptyLocation returns an empty location next to one of the provided locations or an error if not able to find one
 func (w *World) FindEmptyLocation(locations ...Location) (Location, error) {
 	for _, l := range locations {
-		neighbors := w.LocationNeighbors(l)
+		neighbors := w.LocationNeighbors(l, 1)
 		for _, n := range neighbors {
 			if !w.IsOccupiedLocation(n) {
 				return n, nil
@@ -298,6 +299,30 @@ func (w *World) UpdateGrid(e Exister, src Location, dst Location) error {
 	w.grid.objects.Set(e, dst)
 
 	return nil
+}
+
+func (w *World) totalNeighbors(l Location, viewDistance int32) int32 {
+
+	// view of 0 means can't see at all
+	if viewDistance == 0 {
+		return 0
+	}
+
+	var neighbors int32
+
+	for x := -viewDistance; x <= viewDistance; x++ {
+		for y := -viewDistance; y <= viewDistance; y++ {
+			newLoc := NewLocationXYZ(l.X+x, l.Y+y, l.Z)
+			if newLoc.SameAs(l) {
+				continue // skip our own location
+			}
+			if err := w.CheckOutsideGrid(newLoc.X, newLoc.Y, newLoc.Z); err == nil {
+				neighbors++
+			}
+		}
+	}
+
+	return neighbors
 }
 
 // SpawnPoint returns a spawn point for the given Exister

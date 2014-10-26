@@ -84,32 +84,19 @@ func (p *Peep) Neighbors() map[Location]Exister {
 // SetNeighbors sets exister's neighbors right now
 // All neighbors in the radius of world.settings.PeepViewDistance are returned
 func (p *Peep) SetNeighbors() {
-	var getNeighbors func(locations []Location, x int32, myLocation Location) []Location
 
-	getNeighbors = func(locations []Location, x int32, myLocation Location) []Location {
-		if x >= p.world.settings.PeepViewDistance {
-			return locations
-		}
-
-		for _, l := range locations {
-			if l.SameAs(myLocation) {
-				continue
-			}
-			neighbors := p.world.LocationNeighbors(l)
-			locations = append(locations, getNeighbors(neighbors, x, l)...)
-		}
-		return locations
-	}
-
-	locations := getNeighbors([]Location{p.Location()}, 0, p.Location())
+	locations := p.world.LocationNeighbors(p.Location(), p.world.settings.PeepViewDistance)
 
 	for _, l := range locations {
+		fmt.Println(l)
+		if p.Location().SameAs(l) {
+			continue
+		}
 		e := p.world.LocationExister(l)
-		if e.IsAlive() { // don't care about dead existers
+		if e != nil && e.IsAlive() { // don't care about dead existers
 			p.neighbors[l] = e
 		}
 	}
-	Log(p.Neighbors())
 }
 
 // LookTurn returns the last turn that the peep looked around

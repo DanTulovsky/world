@@ -24,16 +24,24 @@ func Log(txt ...interface{}) {
 	fmt.Fprintf(os.Stderr, "%v\n", txt)
 }
 
+type neighborViewDistanceCache struct {
+	l Location
+	v int32
+}
+
 // World describes the world state
 type World struct {
-	peeps      []*Peep // citizens
-	name       string
-	settings   Settings
-	turn       int64              // the current turn
-	eventQueue chan termbox.Event // for catching user input
-	grid       *Grid              // Map of coordinates to occupant
-	stats      *stats
+	peeps             []*Peep // citizens
+	name              string
+	settings          Settings
+	turn              Turn               // the current turn
+	eventQueue        chan termbox.Event // for catching user input
+	grid              *Grid              // Map of coordinates to occupant
+	stats             *stats
+	locationNeighbors map[neighborViewDistanceCache][]Location // cache of location/view distance -> list of neighbor locations
 }
+
+type Turn int64
 
 // ListContains returns true if Location is in the list.
 func ListContains(list []Location, loc Location) bool {
@@ -55,7 +63,8 @@ func NewWorld(name string, settings Settings, eventQueue chan termbox.Event) *Wo
 			size:    settings.Size,
 			objects: NewDmap(), // empty grid
 		},
-		stats: newStats(),
+		stats:             newStats(),
+		locationNeighbors: make(map[neighborViewDistanceCache][]Location),
 	}
 }
 
@@ -104,17 +113,6 @@ func (w *World) NextTurn() error {
 
 	}
 	return nil
-}
-
-// BestPeepMove returns the most optimal move for a peep
-func (w *World) BestPeepMove(e Exister) (int32, int32, int32) {
-	// random for now
-	var x, y, z int32
-	// Peeps can move one square at a time in x, y direction.
-	m := []int32{-1, 0, 1}
-	x = m[rand.Intn(len(m))]
-	y = m[rand.Intn(len(m))]
-	return x, y, z
 }
 
 // randomPeep creates a new peep at random

@@ -21,8 +21,12 @@ type Peep struct {
 	age        PeepAge
 	isalive    bool
 	gender     PeepGender
-	deadAtTurn int64             // World turn when the peep died
-	met        map[Exister]int64 // records all other existers and the turn met
+	deadAtTurn Turn                 // World turn when the peep died
+	met        map[Exister]Turn     // records all other existers and the turn met
+	lookTurn   Turn                 // the turn when this peep looked around
+	world      *World               // reference to world
+	neighbors  map[Location]Exister // neighbors at time of last lookup
+	spawnTurn  Turn                 // the turn of last spawn
 }
 
 func (w *World) Genders() []PeepGender {
@@ -44,10 +48,12 @@ func (w *World) NewPeep(gender PeepGender, location Location) (*Peep, error) {
 		gender = genders[rand.Intn(len(genders))]
 	}
 	peep := &Peep{
-		id:      uuid.New(),
-		isalive: true,
-		gender:  gender,
-		met:     make(map[Exister]int64),
+		id:        uuid.New(),
+		isalive:   true,
+		gender:    gender,
+		met:       make(map[Exister]Turn),
+		world:     w,
+		neighbors: make(map[Location]Exister),
 	}
 	// If no specific location set, pick one based on gender
 	if location.SameAs(Location{}) {
@@ -63,6 +69,59 @@ func (w *World) NewPeep(gender PeepGender, location Location) (*Peep, error) {
 	w.peeps = append(w.peeps, peep)
 	w.UpdateGrid(peep, location, location)
 	return peep, nil
+}
+
+// Location returns this peep's location
+func (p *Peep) Location() Location {
+	l, _ := p.world.ExisterLocation(p)
+	return l
+}
+
+// NeighborsFromLook returns the map of neighbors at time of last lookup
+func (p *Peep) NeighborsFromLook() map[Location]Exister {
+	return p.neighbors
+}
+
+// SetNeighbors sets exister's neighbors right now
+// All neighbors in the radius of world.settings.PeepViewDistance are returned
+func (p *Peep) SetNeighbors() {
+
+	locations := p.world.LocationNeighbors(p.Location(), p.world.settings.PeepViewDistance)
+
+	for _, l := range locations {
+		if p.Location().SameAs(l) {
+			continue
+		}
+		e := p.world.LocationExister(l)
+		if e != nil && e.IsAlive() { // don't care about dead existers
+			p.neighbors[l] = e
+		}
+	}
+}
+
+// SpawnTurn returns the last time the peep spawned
+func (p *Peep) SpawnTurn() Turn {
+	return p.spawnTurn
+}
+
+// SetSpawnTurn sets the spawn turn
+func (p *Peep) SetSpawnTurn(t Turn) {
+	p.spawnTurn = t
+}
+
+// World returns pointer to the world the exister is in
+func (p *Peep) World() *World {
+	return p.world
+}
+
+// LookTurn returns the last turn that the peep looked around
+func (p *Peep) LookTurn() Turn {
+	return p.lookTurn
+}
+
+// SetLookTurn sets the last turn this peep looked around
+func (p *Peep) SetLookTurn(t Turn) {
+	p.lookTurn = t
 }
 
 func (peep *Peep) ID() string {
@@ -88,7 +147,7 @@ func (peep *Peep) Age() PeepAge {
 	return peep.age
 }
 
-func (peep *Peep) DeadAtTurn() int64 {
+func (peep *Peep) DeadAtTurn() Turn {
 	return peep.deadAtTurn
 }
 
@@ -99,12 +158,12 @@ func (peep *Peep) AddAge() {
 
 // Meet records a meeting between peep and other
 // This records both sides
-func (peep *Peep) Meet(other Exister, turn int64) {
+func (peep *Peep) Meet(other Exister, turn Turn) {
 	peep.met[other] = turn
 }
 
 // Met returns all the existers this one met, and the turn.
-func (peep *Peep) Met() map[Exister]int64 {
+func (peep *Peep) Met() map[Exister]Turn {
 	return peep.met
 }
 
@@ -117,7 +176,7 @@ func (peep *Peep) MetPeep(other Exister) bool {
 }
 
 // Die kills the peep
-func (peep *Peep) Die(turn int64) {
+func (peep *Peep) Die(turn Turn) {
 	// Log("Peep: ", peep.ID(), " died!")
 	peep.isalive = false
 	peep.deadAtTurn = turn
@@ -130,7 +189,7 @@ func (peep *Peep) Gender() PeepGender {
 
 // AgeOrDie ages a peep or kills him based on age and probability
 // An error is return on death
-func (peep *Peep) AgeOrDie(maxage PeepAge, randomdeath float64, turn int64) (PeepAge, error) {
+func (peep *Peep) AgeOrDie(maxage PeepAge, randomdeath float64, turn Turn) (PeepAge, error) {
 	if peep.age >= maxage {
 		peep.Die(turn)
 		return peep.Age(), fmt.Errorf("Peep died, too old...")

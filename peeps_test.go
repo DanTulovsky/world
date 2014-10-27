@@ -14,6 +14,12 @@ func TestNewPeep(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(peep1.Gender(), ShouldEqual, "red")
 	})
+
+	w.settings.MaxPeeps = 1
+	Convey("NewPeep fails to be born, too many already", t, func() {
+		_, err := w.NewPeep("red", Location{})
+		So(err, ShouldNotBeNil)
+	})
 }
 
 func TestMeetings(t *testing.T) {
@@ -81,4 +87,55 @@ func TestIsAlive(t *testing.T) {
 	Convey("peep2 is dead", t, func() {
 		So(peep2.IsAlive(), ShouldBeFalse)
 	})
+}
+
+func TestSetNeighbors(t *testing.T) {
+	w := genWorld()
+	peep1, err := w.NewPeep("red", NewLocationXYZ(1, 1, 0))
+	Convey("peep1 is alive", t, func() {
+		So(err, ShouldBeNil)
+		So(peep1.IsAlive(), ShouldBeTrue)
+	})
+
+	peep1.SetNeighbors()
+	Convey("peep1 has no neighbors", t, func() {
+		So(peep1.NeighborsFromLook(), ShouldBeEmpty)
+	})
+
+	w.NewPeep("red", NewLocationXYZ(1, 2, 0))
+	peep1.SetNeighbors()
+	Convey("peep1 has 1 neighbor", t, func() {
+		So(len(peep1.NeighborsFromLook()), ShouldEqual, 1)
+	})
+}
+
+func TestSetNeighborsCorner(t *testing.T) {
+	w := genWorld()
+	peep1, err := w.NewPeep("red", NewLocationXYZ(w.MinX(), w.MinY(), 0))
+	Convey("peep1 is alive", t, func() {
+		So(err, ShouldBeNil)
+		So(peep1.IsAlive(), ShouldBeTrue)
+	})
+
+	peep1.SetNeighbors()
+	Convey("peep1 has no neighbors", t, func() {
+		So(peep1.NeighborsFromLook(), ShouldBeEmpty)
+	})
+
+	w.NewPeep("red", NewLocationXYZ(w.MinX()+1, w.MinY()+1, 0))
+	peep1.SetNeighbors()
+	Convey("peep1 has 1 neighbor", t, func() {
+		So(len(peep1.NeighborsFromLook()), ShouldEqual, 1)
+	})
+}
+
+func TestWorld(t *testing.T) {
+	w := genWorld()
+	peep1, err := w.NewPeep("red", NewLocationXYZ(w.MinX(), w.MinY(), 0))
+	Convey("peep1 is alive", t, func() {
+		So(err, ShouldBeNil)
+		So(peep1.IsAlive(), ShouldBeTrue)
+		So(peep1.World().name, ShouldEqual, "Alpha1")
+	})
+
 }

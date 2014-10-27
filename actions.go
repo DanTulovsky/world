@@ -67,7 +67,7 @@ func (w *World) bestAction(e Exister) func() {
 
 	for _, a := range actions {
 		// wg.Add(1)
-		c := make(chan priorityAction, 1)
+		c := make(chan priorityAction)
 		channels = append(channels, c)
 		go w.actionPriority(a, e, c)
 	}

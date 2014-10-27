@@ -19,4 +19,5 @@ type Settings struct {
 	YoungHightlightAge PeepAge       // Up to this age, peeps are highlighted in the GUI
 	PeepRememberTurns  Turn          // How many turns peeps remember their surroundings for
 	PeepViewDistance   int32         // how far they can see
+	PeepSpawnInterval  Turn          // How many turns to wait after a spawn before can spawn again
 }

@@ -26,6 +26,7 @@ type Peep struct {
 	lookTurn   Turn                 // the turn when this peep looked around
 	world      *World               // reference to world
 	neighbors  map[Location]Exister // neighbors at time of last lookup
+	spawnTurn  Turn                 // the turn of last spawn
 }
 
 func (w *World) Genders() []PeepGender {
@@ -76,8 +77,8 @@ func (p *Peep) Location() Location {
 	return l
 }
 
-// Neighbors returns the map of neighbors at time of last lookup
-func (p *Peep) Neighbors() map[Location]Exister {
+// NeighborsFromLook returns the map of neighbors at time of last lookup
+func (p *Peep) NeighborsFromLook() map[Location]Exister {
 	return p.neighbors
 }
 
@@ -88,7 +89,6 @@ func (p *Peep) SetNeighbors() {
 	locations := p.world.LocationNeighbors(p.Location(), p.world.settings.PeepViewDistance)
 
 	for _, l := range locations {
-		fmt.Println(l)
 		if p.Location().SameAs(l) {
 			continue
 		}
@@ -99,7 +99,17 @@ func (p *Peep) SetNeighbors() {
 	}
 }
 
-// LookTurn returns the last turn that the peep looked around
+// SpawnTurn returns the last time the peep spawned
+func (p *Peep) SpawnTurn() Turn {
+	return p.spawnTurn
+}
+
+// SetSpawnTurn sets the spawn turn
+func (p *Peep) SetSpawnTurn(t Turn) {
+	p.spawnTurn = t
+}
+
+// World returns pointer to the world the exister is in
 func (p *Peep) World() *World {
 	return p.world
 }

@@ -148,13 +148,144 @@ func (w *World) movePeep(peep Exister) error {
 	return nil
 }
 
-// BestPeepMove returns the most optimal move for a peep
-func (w *World) BestPeepMove(e Exister) (int32, int32, int32) {
-	// random for now
-	var x, y, z int32
-	// Peeps can move one square at a time in x, y direction.
-	m := []int32{-1, 0, 1}
-	x = m[rand.Intn(len(m))]
-	y = m[rand.Intn(len(m))]
+// NextMoveToGetFromTo returns the x, y, z magnitude in order to move from src to dst
+func (w *World) NextMoveToGetFromTo(src, dst Location) (x int32, y int32, z int32) {
+	if src.SameAs(dst) {
+		return 0, 0, 0
+	}
+
+	if dst.X > src.X {
+		x = 1
+	} else if dst.X < src.X {
+		x = -1
+	} else {
+		x = 0
+	}
+
+	if dst.Y > src.Y {
+		y = 1
+	} else if dst.Y < src.Y {
+		y = -1
+	} else {
+		y = 0
+	}
+
+	if dst.Z > src.Z {
+		z = 1
+	} else if dst.Z < src.Z {
+		z = -1
+	} else {
+		z = 0
+	}
+
+	// check if the suggested square is busy and try alternatives
+	if w.IsOccupiedLocation(Location{src.X + x, src.Y + y, src.Z + z}) {
+		if !w.IsOccupiedLocation(Location{src.X, src.Y + y, src.Z + z}) {
+			return 0, y, z
+		}
+		if !w.IsOccupiedLocation(Location{src.X + x, src.Y, src.Z + z}) {
+			return x, 0, z
+		}
+		if !w.IsOccupiedLocation(Location{src.X + x, src.Y + y, src.Z}) {
+			return x, y, 0
+		}
+		// if all best moves are taken, try a random one
+		m := []int32{-1, 0, 1}
+		return m[rand.Intn(len(m))], m[rand.Intn(len(m))], z
+	}
 	return x, y, z
+}
+
+// NextMoveToGetAwayFrom returns the x, y, z magnitude in order to move away from loc
+func (w *World) NextMoveToGetAwayFrom(src, loc Location) (x int32, y int32, z int32) {
+	if loc.X <= src.X {
+		x = 1
+	} else if loc.X > src.X {
+		x = -1
+	}
+	if loc.Y <= src.Y {
+		y = 1
+	} else if loc.Y > src.Y {
+		y = -1
+	}
+
+	//if loc.Z < src.Z {
+	//	z = 1
+	//} else if loc.Z > src.Z {
+	//	z = -1
+	//} else {
+	//	z = random[rand.Intn(len(random))]
+	//}
+
+	Log(x, y, z)
+
+	// check if the suggested square is busy and try alternatives
+	if w.IsOccupiedLocation(Location{src.X + x, src.Y + y, src.Z + z}) ||
+		w.IsOutsideGrid(src.X+x, src.Y+y, src.Z+z) {
+		if !w.IsOccupiedLocation(Location{src.X, src.Y + y, src.Z + z}) &&
+			!w.IsOutsideGrid(src.X, src.Y+y, src.Z+z) {
+			return 0, y, z
+		}
+		if !w.IsOccupiedLocation(Location{src.X + x, src.Y, src.Z + z}) &&
+			!w.IsOutsideGrid(src.X+x, src.Y, src.Z+z) {
+			return x, 0, z
+		}
+		if !w.IsOccupiedLocation(Location{src.X + x, src.Y + y, src.Z}) &&
+			!w.IsOutsideGrid(src.X+x, src.Y+y, src.Z) {
+			return x, y, 0
+		}
+		// if all best moves are taken, try a random one
+		m := []int32{-1, 0, 1}
+		return m[rand.Intn(len(m))], m[rand.Intn(len(m))], z
+	}
+	return x, y, z
+}
+
+// BestPeepMove returns the most optimal move for a peep
+// x, y and z are magnitudes, not coordinates.
+func (w *World) BestPeepMove(e Exister) (x int32, y int32, z int32) {
+	Log("Looking for best move")
+	// Suggest move based on neighbors around
+	neighbors := e.NeighborsFromLook()
+
+	for _, n := range neighbors {
+		// Move towards same gender if have not yet spawned and are both of spawn age
+		if n.Gender() == e.Gender() {
+			if n.SpawnTurn()-w.turn < w.settings.PeepSpawnInterval {
+				Log("too recent spawn")
+				continue // spawned too recently
+			}
+
+			if e.MetPeep(n) {
+				Log("already met")
+				continue // already met
+			}
+
+			if w.OfSpawnAge(e) && w.OfSpawnAge(n) {
+				Log("Moving towards spawn!")
+				return w.NextMoveToGetFromTo(e.Location(), n.Location())
+			}
+		} else { // different genders
+			// Move towarda different gender peep
+			Log("Moving towards other gender")
+			return w.NextMoveToGetFromTo(e.Location(), n.Location())
+		}
+	}
+
+	// No interesting neighbors around
+	if w.OfSpawnAge(e) {
+		// Move towards base
+		Log("moving to home base")
+		return w.NextMoveToGetFromTo(e.Location(), e.Homebase())
+	} else {
+		// Move away from base
+		Log("Moving away from home base at %v (I am at %v)", e.Homebase(), e.Location())
+		return w.NextMoveToGetAwayFrom(e.Location(), e.Homebase())
+	}
+
+	// Peeps can move one square at a time in x, y direction.
+	// No neighbors that e knows about or no specific instructions, so random move.
+	// Should not end up here right now
+	m := []int32{-1, 0, 1}
+	return m[rand.Intn(len(m))], m[rand.Intn(len(m))], z
 }

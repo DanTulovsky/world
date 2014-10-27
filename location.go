@@ -70,11 +70,15 @@ type Exister interface {
 	DeadAtTurn() Turn
 	Met() map[Exister]Turn // Map of exister to turn when met
 	Meet(Exister, Turn)
-	MetPeep(Exister) bool // Whether the two have met
-	SetLookTurn(Turn)     // sets the turn the exister looked around
-	LookTurn() Turn       // last time exister looked around
-	World() *World        // returns pointer to the World this exister inhabits
-	SetNeighbors()        // sets the neighbors around the exister on this turn
+	MetPeep(Exister) bool                    // Whether the two have met
+	SetLookTurn(Turn)                        // sets the turn the exister looked around
+	LookTurn() Turn                          // last time exister looked around
+	World() *World                           // returns pointer to the World this exister inhabits
+	SetNeighbors()                           // sets the neighbors around the exister on this turn
+	NeighborsFromLook() map[Location]Exister // gets the neighbors of the exister (from the last look time)
+	Location() Location                      // location of the exister on the map
+	SpawnTurn() Turn                         // last time exister spawned
+	SetSpawnTurn(Turn)                       // sets the spawn turn
 }
 
 // MaxX returns the max X value of the grid that can be occupied
@@ -125,6 +129,11 @@ func (w *World) SpawnLocations() []Location {
 
 // LocationNeighbors returns all neighboring locations to the given one within the viewDistance
 func (w *World) LocationNeighbors(l Location, viewDistance int32) []Location {
+	// check cache first
+	if neighbors, ok := w.locationNeighbors[neighborViewDistanceCache{l, viewDistance}]; ok {
+		return neighbors
+	}
+
 	neighbors := []Location{}
 
 	for x := -viewDistance; x <= viewDistance; x++ {
@@ -133,12 +142,13 @@ func (w *World) LocationNeighbors(l Location, viewDistance int32) []Location {
 			if newLoc.SameAs(l) {
 				continue // skip our own location
 			}
-			if err := w.CheckOutsideGrid(newLoc.X, newLoc.Y, newLoc.Z); err == nil {
+			if !w.IsOutsideGrid(newLoc.X, newLoc.Y, newLoc.Z) {
 				neighbors = append(neighbors, newLoc)
 			}
 		}
 	}
-
+	// Update cache
+	w.locationNeighbors[neighborViewDistanceCache{l, viewDistance}] = neighbors
 	return neighbors
 }
 
@@ -197,6 +207,14 @@ func (w *World) SameGenderSpawn(left, right Exister) error {
 		return fmt.Errorf("Both must be of spawn age!")
 	}
 
+	if w.turn-left.SpawnTurn() < w.settings.PeepSpawnInterval {
+		return fmt.Errorf("Too few turns since last spawn for %v", left.ID())
+	}
+
+	if w.turn-right.SpawnTurn() < w.settings.PeepSpawnInterval {
+		return fmt.Errorf("Too few turns since last spawn for %v", right.ID())
+	}
+
 	var locLeft, locRight Location
 	var err error
 	if locLeft, err = w.ExisterLocation(left); err != nil {
@@ -213,6 +231,8 @@ func (w *World) SameGenderSpawn(left, right Exister) error {
 
 	if rand.Float64() < w.settings.SpawnProbability {
 		w.NewPeep(left.Gender(), newLocation)
+		left.SetSpawnTurn(w.turn)
+		right.SetSpawnTurn(w.turn)
 	}
 	return nil
 }
@@ -232,6 +252,8 @@ func (w *World) DiffGenderSpawn(left, right Exister) error {
 		if err == nil {
 			if rand.Float64() < w.settings.SpawnProbability {
 				w.NewPeep("", newLocation)
+				left.SetSpawnTurn(w.turn)
+				right.SetSpawnTurn(w.turn)
 			}
 		}
 	}
@@ -240,10 +262,14 @@ func (w *World) DiffGenderSpawn(left, right Exister) error {
 
 // Meet is called when two Existers bump into each other
 func (w *World) Meet(left, right Exister) {
+
 	// If they are of the same gender, they spawn a new one (yes yes, I know it's backwards)
 	// Spawns only happen the first time peeps meet
 	if !left.MetPeep(right) && !right.MetPeep(left) { // no need to check both?
-		w.SameGenderSpawn(left, right)
+		if err := w.SameGenderSpawn(left, right); err != nil {
+			//Log(left.Age(), right.Age())
+			//Log(err)
+		}
 	}
 	// Record the meeting
 	left.Meet(right, w.turn)
@@ -291,8 +317,8 @@ func (w *World) UpdateGrid(e Exister, src Location, dst Location) error {
 	}
 
 	// Check that new location is inside the grid
-	if err := w.CheckOutsideGrid(dst.X, dst.Y, dst.Z); err != nil {
-		return err
+	if w.IsOutsideGrid(dst.X, dst.Y, dst.Z) {
+		return fmt.Errorf("Location %v is outside the grid", Location{dst.X, dst.Y, dst.Z})
 	}
 
 	w.grid.objects.DelByLocation(src)
@@ -316,7 +342,7 @@ func (w *World) totalNeighbors(l Location, viewDistance int32) int32 {
 			if newLoc.SameAs(l) {
 				continue // skip our own location
 			}
-			if err := w.CheckOutsideGrid(newLoc.X, newLoc.Y, newLoc.Z); err == nil {
+			if !w.IsOutsideGrid(newLoc.X, newLoc.Y, newLoc.Z) {
 				neighbors++
 			}
 		}
@@ -335,23 +361,26 @@ func (w *World) CheckMovementOutsideGrid(src Location, x, y, z int32) error {
 	newX := src.X + x
 	newY := src.Y + y
 	newZ := src.Z + z
-	return w.CheckOutsideGrid(newX, newY, newZ)
+	if w.IsOutsideGrid(newX, newY, newZ) {
+		return fmt.Errorf("Location %v is outside the grid!", Location{newX, newY, newZ})
+	}
+	return nil
 }
 
 // CheckOutsideGrid returns error if coordinates are outside the grid
 // X and Y also remove 1 line for border
-func (w *World) CheckOutsideGrid(x, y, z int32) error {
+func (w *World) IsOutsideGrid(x, y, z int32) bool {
 	if x > w.settings.Size.MaxX-1 || x < w.settings.Size.MinX+1 {
-		return fmt.Errorf("Movement outside world not allowed!")
+		return true
 	}
 	if y > w.settings.Size.MaxY-1 || y < w.settings.Size.MinY+1 {
-		return fmt.Errorf("Movement outside world not allowed!")
+		return true
 	}
 	if z > w.settings.Size.MaxZ || z < w.settings.Size.MinZ {
-		return fmt.Errorf("Movement outside world not allowed!")
+		return true
 	}
 
-	return nil
+	return false
 }
 
 // ExisterLocation returns a location, given an exister.
@@ -360,6 +389,7 @@ func (w *World) ExisterLocation(e Exister) (Location, error) {
 }
 
 // Move moves a mover in direction and magnitude specified.
+// e.g. (1,0,0) will move X to the right 1 and nothing on y and z
 func (w *World) Move(e Exister, x, y, z int32) error {
 	var src, dst Location
 	var err error

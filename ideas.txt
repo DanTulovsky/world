@@ -1,0 +1,1 @@
+- after spawn, wait X number of moves before can spawn again

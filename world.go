@@ -24,15 +24,21 @@ func Log(txt ...interface{}) {
 	fmt.Fprintf(os.Stderr, "%v\n", txt)
 }
 
+type neighborViewDistanceCache struct {
+	l Location
+	v int32
+}
+
 // World describes the world state
 type World struct {
-	peeps      []*Peep // citizens
-	name       string
-	settings   Settings
-	turn       Turn               // the current turn
-	eventQueue chan termbox.Event // for catching user input
-	grid       *Grid              // Map of coordinates to occupant
-	stats      *stats
+	peeps             []*Peep // citizens
+	name              string
+	settings          Settings
+	turn              Turn               // the current turn
+	eventQueue        chan termbox.Event // for catching user input
+	grid              *Grid              // Map of coordinates to occupant
+	stats             *stats
+	locationNeighbors map[neighborViewDistanceCache][]Location // cache of location/view distance -> list of neighbor locations
 }
 
 type Turn int64
@@ -57,7 +63,8 @@ func NewWorld(name string, settings Settings, eventQueue chan termbox.Event) *Wo
 			size:    settings.Size,
 			objects: NewDmap(), // empty grid
 		},
-		stats: newStats(),
+		stats:             newStats(),
+		locationNeighbors: make(map[neighborViewDistanceCache][]Location),
 	}
 }
 

@@ -36,8 +36,8 @@ func TestAliveDeadPeeps(t *testing.T) {
 	w.settings.MaxAge = 4000
 
 	Convey("No peeps in the world.", t, func() {
-		So(w.AlivePeeps(), ShouldEqual, 0)
-		So(w.DeadPeeps(), ShouldEqual, 0)
+		So(w.AlivePeepCount(), ShouldEqual, 0)
+		So(w.DeadPeepCount(), ShouldEqual, 0)
 	})
 
 	Convey("Accurate count of alive peeps.", t, func() {
@@ -48,15 +48,15 @@ func TestAliveDeadPeeps(t *testing.T) {
 			if _, err := w.NewPeep("", loc); err != nil {
 				fmt.Println(err)
 			}
-			So(w.AlivePeeps(), ShouldEqual, x)
+			So(w.AlivePeepCount(), ShouldEqual, x)
 		}
 	})
 
 	Convey("Accurate count of alive/dead peeps.", t, func() {
 		deadPeeps := 0
 		for _, peep := range w.peeps {
-			So(w.DeadPeeps(), ShouldEqual, deadPeeps)
-			So(w.AlivePeeps(), ShouldEqual, len(w.peeps)-deadPeeps)
+			So(w.DeadPeepCount(), ShouldEqual, deadPeeps)
+			So(w.AlivePeepCount(), ShouldEqual, len(w.peeps)-deadPeeps)
 			peep.Die(0)
 			deadPeeps++
 

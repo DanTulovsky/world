@@ -67,13 +67,13 @@ func TestNextMoveToGetFromToAlternatives(t *testing.T) {
 
 func TestNextMoveToGetAwayFrom(t *testing.T) {
 	w := genWorld()
-	w.NewPeep("red", NewLocationXYZ(w.MinX(), w.MaxY(), 0))
+	w.NewPeep("red", NewLocationXYZ(0, 0, 0))
 
-	src := Location{0, 0, 0}
+	current := Location{0, 0, 0}
 	loc := Location{w.MinX(), w.MinY(), 0}
 
-	Convey("Best magnitude to move away from {MinX, MaxY, 0} while on {0, 0, 0} is {1, 1, 0}", t, func() {
-		x, y, z := w.NextMoveToGetAwayFrom(src, loc)
+	Convey("Best magnitude to move away from {MinX, MinY, 0} while on {0, 0, 0} is {1, 1, 0}", t, func() {
+		x, y, z := w.NextMoveToGetAwayFrom(current, loc)
 		So(x, ShouldEqual, 1)
 		So(y, ShouldEqual, 1)
 		So(z, ShouldEqual, 0)

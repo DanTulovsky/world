@@ -39,6 +39,9 @@ type World struct {
 	grid              *Grid              // Map of coordinates to occupant
 	stats             *stats
 	locationNeighbors map[neighborViewDistanceCache][]Location // cache of location/view distance -> list of neighbor locations
+	okToAdvance       bool                                     // for debugging
+	debug             bool
+	homebase          map[PeepGender]Location
 }
 
 type Turn int64
@@ -53,7 +56,17 @@ func ListContains(list []Location, loc Location) bool {
 	return false
 }
 
-func NewWorld(name string, settings Settings, eventQueue chan termbox.Event) *World {
+// ListContainsString returns true if a string is in the list
+func ListContainsString(list []string, s string) bool {
+	for _, l := range list {
+		if l == s {
+			return true
+		}
+	}
+	return false
+}
+
+func NewWorld(name string, settings Settings, eventQueue chan termbox.Event, debug bool) *World {
 	rand.Seed(time.Now().UnixNano())
 	return &World{
 		name:       name,
@@ -65,6 +78,54 @@ func NewWorld(name string, settings Settings, eventQueue chan termbox.Event) *Wo
 		},
 		stats:             newStats(),
 		locationNeighbors: make(map[neighborViewDistanceCache][]Location),
+		debug:             debug,
+		homebase:          make(map[PeepGender]Location),
+	}
+}
+
+// handleOvercrowding handles the cases when a peep is completely surrounded
+func (w *World) handleOvercrowding(p *Peep) {
+	// Get all neighboring locations
+	neighborLocations := w.LocationNeighbors(p.Location(), 1)
+
+	var genderCount = make(map[PeepGender]int)
+	for _, l := range neighborLocations {
+		if e := w.LocationExister(l); e != nil {
+			genderCount[e.Gender()]++
+		}
+	}
+
+	// Check if surrounded and kill if settings say so
+	if w.settings.KillIfSurroundByOther {
+		var otherNeighbors int
+
+		for gender, count := range genderCount {
+			if gender != p.Gender() {
+				otherNeighbors += count
+			}
+		}
+		if len(neighborLocations) == otherNeighbors {
+			p.Die(w.turn)
+		}
+
+	}
+
+	if w.settings.KillIfSurroundedBySame {
+		// If all locations around are take up by same gender peeps
+		if len(neighborLocations) == genderCount[p.Gender()] {
+			p.Die(w.turn)
+		}
+	}
+
+	if w.settings.KillIfSurrounded {
+		var allNeighbors int
+		for _, count := range genderCount {
+			allNeighbors += count
+		}
+
+		if len(neighborLocations) == allNeighbors {
+			p.Die(w.turn)
+		}
 	}
 }
 
@@ -82,10 +143,22 @@ func (w *World) NextTurn() error {
 		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyCtrlS {
 			w.ShowSettings(os.Stderr)
 		}
+		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEnter {
+			w.okToAdvance = true
+		}
 	default:
+		if w.debug {
+			if !w.okToAdvance {
+				return nil
+			} else {
+				Log("Advancing to next turn...")
+			}
+
+		}
+
 		// Update stats
-		w.stats.peepsAlive.Update(w.AlivePeeps())
-		w.stats.peepsDead.Update(w.DeadPeeps())
+		w.stats.peepsAlive.Update(w.AlivePeepCount())
+		w.stats.peepsDead.Update(w.DeadPeepCount())
 
 		// Redraw screen
 		w.Draw()
@@ -100,7 +173,7 @@ func (w *World) NextTurn() error {
 			//Log(err)
 		}
 
-		// Age existing peeps
+		// Age and/or kill existing peeps
 		for _, peep := range w.peeps {
 			if !peep.IsAlive() {
 				continue
@@ -109,6 +182,14 @@ func (w *World) NextTurn() error {
 			if err != nil {
 				w.stats.ages.Update(int64(age))
 			}
+			w.handleOvercrowding(peep)
+
+		}
+
+		if w.debug {
+			w.okToAdvance = false
+			w.Show(os.Stderr)
+			w.ShowGrid(os.Stderr)
 		}
 
 	}
@@ -120,18 +201,18 @@ func (w *World) NextTurn() error {
 // As the world grows, probability of this event goes towards 0
 // Subject to world.settings.MaxPeeps
 func (w *World) randomPeep() error {
-	if w.AlivePeeps() >= w.settings.NewPeepMax {
-		return fmt.Errorf("Too many peeps (%v) for random spawn.", w.AlivePeeps())
+	if w.AlivePeepCount() >= w.settings.NewPeepMax {
+		return fmt.Errorf("Too many peeps (%v) for random spawn.", w.AlivePeepCount())
 	}
-	probability := w.settings.NewPeep - (float64(w.AlivePeeps()) / w.settings.NewPeepModifier)
+	probability := w.settings.NewPeep - (float64(w.AlivePeepCount()) / w.settings.NewPeepModifier)
 	if rand.Float64() < probability {
 		w.NewPeep("", Location{})
 	}
 	return nil
 }
 
-// AlivePeeps returns the number of alive peeps
-func (world *World) AlivePeeps() int64 {
+// AlivePeepCount returns the number of alive peeps
+func (world *World) AlivePeepCount() int64 {
 	var peeps int64
 	for _, p := range world.peeps {
 		if p.IsAlive() {
@@ -141,8 +222,8 @@ func (world *World) AlivePeeps() int64 {
 	return peeps
 }
 
-// DeadPeeps returns the number of dead peeps
-func (world *World) DeadPeeps() int64 {
+// DeadPeepCount returns the number of dead peeps
+func (world *World) DeadPeepCount() int64 {
 	var peeps int64
 	for _, p := range world.peeps {
 		if !p.IsAlive() {
@@ -176,7 +257,7 @@ func (w *World) PeepMaxAge() PeepAge {
 
 // PeepMinAge returns the min age of all peeps
 func (w *World) PeepMinAge() PeepAge {
-	if w.AlivePeeps() == 0 {
+	if w.AlivePeepCount() == 0 {
 		return 0
 	}
 	min := w.settings.MaxAge
@@ -239,7 +320,7 @@ func (world *World) Show(w io.Writer) {
 	fmt.Fprintf(w, "%v\n", strings.Repeat("-", 80))
 	fmt.Fprintf(w, "Name: %v\n", world.name)
 	fmt.Fprintf(w, "Turn: %v\n", world.turn)
-	fmt.Fprintf(w, "Peeps Alive/Dead/MaxAlive: %v/%v/%v\n", world.AlivePeeps(), world.DeadPeeps(), world.settings.MaxPeeps)
+	fmt.Fprintf(w, "Peeps Alive/Dead/MaxAlive: %v/%v/%v\n", world.AlivePeepCount(), world.DeadPeepCount(), world.settings.MaxPeeps)
 	fmt.Fprintf(w, "Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
 	fmt.Fprintf(w, "Genders: %v\n", world.PeepGenders())
 

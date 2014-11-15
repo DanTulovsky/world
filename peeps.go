@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	genders  = []PeepGender{"blue", "red", "green", "yellow"}
-	homebase = make(map[PeepGender]Location)
+	genders = []PeepGender{"blue", "red", "green", "yellow"}
+	//	genders = []PeepGender{"blue", "red", "green", "yellow"}
 )
 
 type PeepAge int64
@@ -34,13 +34,13 @@ func (w *World) Genders() []PeepGender {
 }
 
 func (w *World) SetHomebase(gender PeepGender, loc Location) {
-	homebase[gender] = loc
+	w.homebase[gender] = loc
 }
 
 // NewPeep creates and returns a new peep
 func (w *World) NewPeep(gender PeepGender, location Location) (*Peep, error) {
 	// MaxPeeps already
-	if w.AlivePeeps() >= w.settings.MaxPeeps {
+	if w.AlivePeepCount() >= w.settings.MaxPeeps {
 		return nil, fmt.Errorf("cannot create new peep, MaxPeeps already present")
 	}
 
@@ -134,7 +134,7 @@ func (peep *Peep) String() string {
 
 // Homebase returns the homebase location given a peep
 func (peep *Peep) Homebase() Location {
-	return homebase[peep.Gender()]
+	return peep.world.homebase[peep.Gender()]
 }
 
 // IsAlive returns True of peep is alive.

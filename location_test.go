@@ -30,7 +30,7 @@ func genWorld() *World {
 	// turn off random moves
 	allowMoves = false
 
-	return NewWorld("Alpha1", *s, event_queue)
+	return NewWorld("Alpha1", *s, event_queue, false)
 }
 
 func TestUpdateGrid(t *testing.T) {
@@ -295,7 +295,7 @@ func TestMeet(t *testing.T) {
 	w.NextTurn()
 
 	Convey("Should have 3 peeps to start.", t, func() {
-		So(w.AlivePeeps(), ShouldEqual, 3)
+		So(w.AlivePeepCount(), ShouldEqual, 3)
 	})
 
 	Convey("peep1 and peep2 make a new peep", t, func() {
@@ -306,27 +306,27 @@ func TestMeet(t *testing.T) {
 		So(peep1.MetPeep(peep2), ShouldBeTrue)
 		So(peep2.MetPeep(peep1), ShouldBeTrue)
 
-		So(w.AlivePeeps(), ShouldEqual, 4)
+		So(w.AlivePeepCount(), ShouldEqual, 4)
 	})
 
 	Convey("peep1 and peep3 make a new peep", t, func() {
 		w.Meet(peep1, peep3)
-		So(w.AlivePeeps(), ShouldEqual, 5)
+		So(w.AlivePeepCount(), ShouldEqual, 5)
 	})
 
 	Convey("peep1 and peep2 don't make a new peep, they already met.", t, func() {
 		w.Meet(peep1, peep2)
-		So(w.AlivePeeps(), ShouldEqual, 5)
+		So(w.AlivePeepCount(), ShouldEqual, 5)
 	})
 
 	Convey("peep1 and peep3 don't make a new peep, they already met.", t, func() {
 		w.Meet(peep1, peep3)
-		So(w.AlivePeeps(), ShouldEqual, 5)
+		So(w.AlivePeepCount(), ShouldEqual, 5)
 	})
 
 	Convey("peep2 and peep3 make a new peep", t, func() {
 		w.Meet(peep2, peep3)
-		So(w.AlivePeeps(), ShouldEqual, 6)
+		So(w.AlivePeepCount(), ShouldEqual, 6)
 	})
 }
 

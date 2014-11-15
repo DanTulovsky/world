@@ -421,6 +421,20 @@ func (w *World) ExisterIcon(e Exister) rune {
 	return unicode.ToUpper(icon)
 }
 
+func colorToTermbox(c PeepGender) termbox.Attribute {
+	switch c {
+	case "blue":
+		return termbox.ColorBlue
+	case "red":
+		return termbox.ColorRed
+	case "green":
+		return termbox.ColorGreen
+	case "yellow":
+		return termbox.ColorYellow
+	}
+	return termbox.ColorDefault
+}
+
 // ExisterFg returns the correct foreground color for an Exister
 func (w *World) ExisterFg(e Exister) termbox.Attribute {
 	switch e.Gender() {
@@ -499,9 +513,10 @@ func (w *World) Draw() {
 	termbox.Flush()
 }
 
-// DrawGrid draws borders around the world
+// DrawGrid draws borders around the world and spawn points
 func (w *World) DrawGrid() {
 	width, height := termbox.Size()
+	Log("width: ", width, " height: ", height)
 
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 
@@ -509,23 +524,31 @@ func (w *World) DrawGrid() {
 	termbox.SetCell(0, 0, ' ', termbox.ColorYellow, termbox.ColorYellow)
 
 	// top line
-	for x := 0; x <= width; x++ {
+	for x := 0; x <= width-2; x++ {
 		termbox.SetCell(x, 0, ' ', termbox.ColorDefault, termbox.Attribute(255))
 	}
 
 	// bottom line
-	for x := 0; x <= width; x++ {
-		termbox.SetCell(x, height-1, ' ', termbox.ColorDefault, termbox.Attribute(255))
+	for x := 0; x <= width-2; x++ {
+		termbox.SetCell(x, height-3, ' ', termbox.ColorDefault, termbox.Attribute(255))
 	}
 
 	// left border
-	for y := 0; y <= height; y++ {
+	for y := 0; y <= height-3; y++ {
 		termbox.SetCell(0, y, ' ', termbox.ColorDefault, termbox.Attribute(255))
 	}
 
 	// right border
-	for y := 0; y <= height; y++ {
-		termbox.SetCell(width-1, y, ' ', termbox.ColorDefault, termbox.Attribute(255))
+	for y := 0; y <= height-3; y++ {
+		termbox.SetCell(width-2, y, ' ', termbox.ColorDefault, termbox.Attribute(255))
+	}
+
+	// Homebases
+	for gender, loc := range w.homebase {
+		Log("Gender: ", gender, " Location: ", loc)
+		termX := int(loc.X) + int(math.Abs(float64(w.settings.Size.MinX)))
+		termY := int(loc.Y) + int(math.Abs(float64(w.settings.Size.MinY)))
+		termbox.SetCell(termX, termY, ' ', colorToTermbox(gender), colorToTermbox(gender))
 	}
 
 	termbox.Flush()

@@ -31,7 +31,6 @@ type neighborViewDistanceCache struct {
 
 // World describes the world state
 type World struct {
-	peeps             []*Peep // citizens
 	name              string
 	settings          Settings
 	turn              Turn               // the current turn
@@ -158,7 +157,6 @@ func (w *World) NextTurn() error {
 
 		// Update stats
 		w.stats.peepsAlive.Update(w.AlivePeepCount())
-		w.stats.peepsDead.Update(w.DeadPeepCount())
 
 		// Redraw screen
 		w.Draw()
@@ -174,7 +172,9 @@ func (w *World) NextTurn() error {
 		}
 
 		// Age and/or kill existing peeps
-		for _, peep := range w.peeps {
+		for _, e := range w.allExisters() {
+			peep := e.(*Peep)
+
 			if !peep.IsAlive() {
 				continue
 			}
@@ -183,7 +183,6 @@ func (w *World) NextTurn() error {
 				w.stats.ages.Update(int64(age))
 			}
 			w.handleOvercrowding(peep)
-
 		}
 
 		if w.debug {
@@ -212,9 +211,10 @@ func (w *World) randomPeep() error {
 }
 
 // AlivePeepCount returns the number of alive peeps
-func (world *World) AlivePeepCount() int64 {
+func (w *World) AlivePeepCount() int64 {
 	var peeps int64
-	for _, p := range world.peeps {
+	for _, e := range w.allExisters() {
+		p := e.(*Peep)
 		if p.IsAlive() {
 			peeps++
 		}
@@ -222,21 +222,11 @@ func (world *World) AlivePeepCount() int64 {
 	return peeps
 }
 
-// DeadPeepCount returns the number of dead peeps
-func (world *World) DeadPeepCount() int64 {
-	var peeps int64
-	for _, p := range world.peeps {
-		if !p.IsAlive() {
-			peeps++
-		}
-	}
-	return peeps
-}
-
 // PeepGenders returns a count of all peep genders
-func (world *World) PeepGenders() map[PeepGender]int64 {
+func (w *World) PeepGenders() map[PeepGender]int64 {
 	genders := make(map[PeepGender]int64)
-	for _, p := range world.peeps {
+	for _, e := range w.allExisters() {
+		p := e.(*Peep)
 		if p.IsAlive() {
 			genders[p.Gender()]++
 		}
@@ -247,7 +237,9 @@ func (world *World) PeepGenders() map[PeepGender]int64 {
 // PeepMaxAge returns the max age of all peeps
 func (w *World) PeepMaxAge() PeepAge {
 	var max PeepAge
-	for _, p := range w.peeps {
+	for _, e := range w.allExisters() {
+		p := e.(*Peep)
+
 		if p.Age() > max && p.IsAlive() {
 			max = p.Age()
 		}
@@ -261,7 +253,9 @@ func (w *World) PeepMinAge() PeepAge {
 		return 0
 	}
 	min := w.settings.MaxAge
-	for _, p := range w.peeps {
+
+	for _, e := range w.allExisters() {
+		p := e.(*Peep)
 		if p.Age() < min && p.IsAlive() {
 			min = p.Age()
 		}
@@ -273,7 +267,8 @@ func (w *World) PeepMinAge() PeepAge {
 func (w *World) PeepAvgAge() PeepAge {
 	var sum PeepAge
 	var alive PeepAge
-	for _, p := range w.peeps {
+	for _, e := range w.allExisters() {
+		p := e.(*Peep)
 		if p.IsAlive() {
 			sum += p.Age()
 			alive++
@@ -292,6 +287,17 @@ func (w *World) runWebServer() {
 	http.ListenAndServe(":6001", nil)
 }
 
+// allExisters returns all existers recorded in the world
+func (w *World) allExisters() []Exister {
+	var all []Exister
+	for _, loc := range w.grid.objects.AllNonEmptyLocations() {
+		if e := w.LocationExister(loc); e != nil {
+			all = append(all, e)
+		}
+	}
+	return all
+}
+
 // Run runs the world.
 func (w *World) Run() {
 	Log("Starting world...")
@@ -304,38 +310,39 @@ func (w *World) Pause() {
 }
 
 // ShowGrid prints the grid and its occupants
-func (world *World) ShowGrid(w io.Writer) {
-	fmt.Fprintf(w, "World GRID:\n")
-	fmt.Fprintf(w, "%v\n", strings.Repeat("*", 40))
-	for _, peep := range world.peeps {
-		if peep.IsAlive() {
-			fmt.Fprintf(w, "%v\n", peep.String())
+func (w *World) ShowGrid(writer io.Writer) {
+	fmt.Fprintf(writer, "World GRID:\n")
+	fmt.Fprintf(writer, "%v\n", strings.Repeat("*", 40))
+	for _, e := range w.allExisters() {
+		p := e.(*Peep)
+		if p.IsAlive() {
+			fmt.Fprintf(writer, "%v\n", p.String())
 		}
 	}
-	fmt.Fprintf(w, "%v\n", strings.Repeat("*", 40))
+	fmt.Fprintf(writer, "%v\n", strings.Repeat("*", 40))
 }
 
 // String prints world information.
-func (world *World) Show(w io.Writer) {
-	fmt.Fprintf(w, "%v\n", strings.Repeat("-", 80))
-	fmt.Fprintf(w, "Name: %v\n", world.name)
-	fmt.Fprintf(w, "Turn: %v\n", world.turn)
-	fmt.Fprintf(w, "Peeps Alive/Dead/MaxAlive: %v/%v/%v\n", world.AlivePeepCount(), world.DeadPeepCount(), world.settings.MaxPeeps)
-	fmt.Fprintf(w, "Peep Max/Avg/Min Age: %v/%v/%v\n", world.PeepMaxAge(), world.PeepAvgAge(), world.PeepMinAge())
-	fmt.Fprintf(w, "Genders: %v\n", world.PeepGenders())
+func (w *World) Show(writer io.Writer) {
+	fmt.Fprintf(writer, "%v\n", strings.Repeat("-", 80))
+	fmt.Fprintf(writer, "Name: %v\n", w.name)
+	fmt.Fprintf(writer, "Turn: %v\n", w.turn)
+	fmt.Fprintf(writer, "Peeps Alive/MaxAlive: %v/%v/%v\n", w.AlivePeepCount(), w.settings.MaxPeeps)
+	fmt.Fprintf(writer, "Peep Max/Avg/Min Age: %v/%v/%v\n", w.PeepMaxAge(), w.PeepAvgAge(), w.PeepMinAge())
+	fmt.Fprintf(writer, "Genders: %v\n", w.PeepGenders())
 
 }
 
 // String prints world information.
-func (world *World) ShowSettings(w io.Writer) {
-	fmt.Fprintf(w, "%v\n", strings.Repeat("-", len("Settings")))
-	fmt.Fprintf(w, "Settings\n")
-	fmt.Fprintf(w, "%v\n", strings.Repeat("-", len("Settings")))
+func (w *World) ShowSettings(writer io.Writer) {
+	fmt.Fprintf(writer, "%v\n", strings.Repeat("-", len("Settings")))
+	fmt.Fprintf(writer, "Settings\n")
+	fmt.Fprintf(writer, "%v\n", strings.Repeat("-", len("Settings")))
 
-	s := reflect.ValueOf(&world.settings).Elem()
+	s := reflect.ValueOf(&w.settings).Elem()
 	typeOfT := s.Type()
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
-		fmt.Fprintf(w, "%s = %v\n", typeOfT.Field(i).Name, f.Interface())
+		fmt.Fprintf(writer, "%s = %v\n", typeOfT.Field(i).Name, f.Interface())
 	}
 }

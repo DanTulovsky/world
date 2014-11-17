@@ -22,6 +22,7 @@ func genWorld() *World {
 		SpawnAge:         5,
 		SpawnProbability: 1, // No randomness in tests
 		PeepViewDistance: 2,
+		MaxGenders:       4,
 	}
 
 	// Listen for input events on keyboard, required to test

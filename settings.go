@@ -23,4 +23,5 @@ type Settings struct {
 	KillIfSurroundByOther  bool          // If surrounded completely by other genders, die
 	KillIfSurroundedBySame bool          // If surrouned completelt by same genders, die
 	KillIfSurrounded       bool          // If surrounded completely, die
+	MaxGenders             int           // Maximux different genders.  1-4
 }

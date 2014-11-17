@@ -155,9 +155,7 @@ func (w *World) movePeep(e Exister) error {
 		Log("Not moving on top of homebase!")
 	}
 
-	Log("Trying to move peep %v", e.ID())
 	if err := w.Move(e, x, y, z); err != nil {
-		Log("Error moving peep: ", err)
 		return fmt.Errorf("Error moving peep: %v", err)
 	}
 
@@ -196,18 +194,21 @@ func (w *World) NextMoveToGetFromTo(src, dst Location) (x int32, y int32, z int3
 
 	// check if the suggested square is busy and try alternatives
 	if w.IsOccupiedLocation(Location{src.X + x, src.Y + y, src.Z + z}) {
-		if !w.IsOccupiedLocation(Location{src.X, src.Y + y, src.Z + z}) {
+		if !w.IsOccupiedLocation(Location{src.X, src.Y + y, src.Z + z}) &&
+			!w.IsOutsideGrid(src.X, src.Y+y, src.Z+z) {
 			return 0, y, z
 		}
-		if !w.IsOccupiedLocation(Location{src.X + x, src.Y, src.Z + z}) {
+		if !w.IsOccupiedLocation(Location{src.X + x, src.Y, src.Z + z}) &&
+			!w.IsOutsideGrid(src.X+x, src.Y, src.Z+z) {
 			return x, 0, z
 		}
-		if !w.IsOccupiedLocation(Location{src.X + x, src.Y + y, src.Z}) {
+		if !w.IsOccupiedLocation(Location{src.X + x, src.Y + y, src.Z}) &&
+			!w.IsOutsideGrid(src.X+x, src.Y+y, src.Z) {
 			return x, y, 0
 		}
 		// if all best moves are taken, try a random one
-		m := []int32{-1, 0, 1}
-		return m[rand.Intn(len(m))], m[rand.Intn(len(m))], z
+		//m := []int32{-1, 0, 1}
+		//return m[rand.Intn(len(m))], m[rand.Intn(len(m))], z
 	}
 	return x, y, z
 }
@@ -227,8 +228,6 @@ func (w *World) NextMoveToGetAwayFrom(current, loc Location) (x int32, y int32, 
 		y = 1
 	}
 
-	Log("Moving this many: ", x, y, z)
-
 	// check if the suggested square is busy and try alternatives
 	if w.IsOccupiedLocation(Location{current.X + x, current.Y + y, current.Z + z}) ||
 		w.IsOutsideGrid(current.X+x, current.Y+y, current.Z+z) {
@@ -245,9 +244,8 @@ func (w *World) NextMoveToGetAwayFrom(current, loc Location) (x int32, y int32, 
 			return x, y, 0
 		}
 		// if all best moves are taken, try a random one
-		Log("Moving randomly!")
-		m := []int32{-1, 0, 1}
-		return m[rand.Intn(len(m))], m[rand.Intn(len(m))], z
+		//m := []int32{-1, 0, 1}
+		//return m[rand.Intn(len(m))], m[rand.Intn(len(m))], z
 	}
 	return x, y, z
 }
@@ -255,7 +253,6 @@ func (w *World) NextMoveToGetAwayFrom(current, loc Location) (x int32, y int32, 
 // BestPeepMove returns the most optimal move for a peep
 // x, y and z are magnitudes, not coordinates.
 func (w *World) BestPeepMove(e Exister) (x int32, y int32, z int32) {
-	Log("Looking for best move")
 	// Suggest move based on neighbors around
 	neighbors := e.NeighborsFromLook()
 
@@ -268,17 +265,14 @@ func (w *World) BestPeepMove(e Exister) (x int32, y int32, z int32) {
 			}
 
 			if e.MetPeep(n) {
-				Log("already met", n.Location())
 				continue // already met
 			}
 
 			if w.OfSpawnAge(e) && w.OfSpawnAge(n) {
-				Log("Moving towards spawn!")
 				return w.NextMoveToGetFromTo(e.Location(), n.Location())
 			}
 		} else { // different genders
 			// Move towarda different gender peep
-			Log("Moving towards other gender at", n.Location())
 			return w.NextMoveToGetFromTo(e.Location(), n.Location())
 		}
 	}
@@ -286,11 +280,9 @@ func (w *World) BestPeepMove(e Exister) (x int32, y int32, z int32) {
 	// No interesting neighbors around
 	if w.OfSpawnAge(e) {
 		// Move towards base
-		Log("moving to home base")
 		return w.NextMoveToGetFromTo(e.Location(), e.Homebase())
 	} else {
 		// Move away from base
-		Log("Moving away from home base at %v (I am at %v)", e.Homebase(), e.Location())
 		return w.NextMoveToGetAwayFrom(e.Location(), e.Homebase())
 	}
 

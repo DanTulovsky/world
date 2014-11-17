@@ -37,7 +37,6 @@ func TestAliveDeadPeeps(t *testing.T) {
 
 	Convey("No peeps in the world.", t, func() {
 		So(w.AlivePeepCount(), ShouldEqual, 0)
-		So(w.DeadPeepCount(), ShouldEqual, 0)
 	})
 
 	Convey("Accurate count of alive peeps.", t, func() {
@@ -51,16 +50,4 @@ func TestAliveDeadPeeps(t *testing.T) {
 			So(w.AlivePeepCount(), ShouldEqual, x)
 		}
 	})
-
-	Convey("Accurate count of alive/dead peeps.", t, func() {
-		deadPeeps := 0
-		for _, peep := range w.peeps {
-			So(w.DeadPeepCount(), ShouldEqual, deadPeeps)
-			So(w.AlivePeepCount(), ShouldEqual, len(w.peeps)-deadPeeps)
-			peep.Die(0)
-			deadPeeps++
-
-		}
-	})
-
 }

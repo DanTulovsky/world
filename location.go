@@ -516,7 +516,6 @@ func (w *World) Draw() {
 // DrawGrid draws borders around the world and spawn points
 func (w *World) DrawGrid() {
 	width, height := termbox.Size()
-	Log("width: ", width, " height: ", height)
 
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 
@@ -545,7 +544,6 @@ func (w *World) DrawGrid() {
 
 	// Homebases
 	for gender, loc := range w.homebase {
-		Log("Gender: ", gender, " Location: ", loc)
 		termX := int(loc.X) + int(math.Abs(float64(w.settings.Size.MinX)))
 		termY := int(loc.Y) + int(math.Abs(float64(w.settings.Size.MinY)))
 		termbox.SetCell(termX, termY, ' ', colorToTermbox(gender), colorToTermbox(gender))

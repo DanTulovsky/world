@@ -10,7 +10,6 @@ import (
 
 var (
 	genders = []PeepGender{"blue", "red", "green", "yellow"}
-	//	genders = []PeepGender{"blue", "red", "green", "yellow"}
 )
 
 type PeepAge int64
@@ -30,7 +29,7 @@ type Peep struct {
 }
 
 func (w *World) Genders() []PeepGender {
-	return genders
+	return genders[0:w.settings.MaxGenders]
 }
 
 func (w *World) SetHomebase(gender PeepGender, loc Location) {
@@ -45,7 +44,7 @@ func (w *World) NewPeep(gender PeepGender, location Location) (*Peep, error) {
 	}
 
 	if gender == "" {
-		gender = genders[rand.Intn(len(genders))]
+		gender = genders[rand.Intn(len(w.Genders()))]
 	}
 	peep := &Peep{
 		id:        uuid.New(),
@@ -66,7 +65,6 @@ func (w *World) NewPeep(gender PeepGender, location Location) (*Peep, error) {
 		return nil, fmt.Errorf("cannot crate new peep, origin taken by: %v", e.ID())
 	}
 
-	w.peeps = append(w.peeps, peep)
 	w.UpdateGrid(peep, location, location)
 	return peep, nil
 }
@@ -129,7 +127,7 @@ func (peep *Peep) ID() string {
 }
 
 func (peep *Peep) String() string {
-	return fmt.Sprintf("%v age:%v gender:%v", peep.id, peep.age, peep.gender)
+	return fmt.Sprintf("%v age:%v gender:%v location:%v", peep.ID(), peep.Age(), peep.Gender(), peep.Location())
 }
 
 // Homebase returns the homebase location given a peep

@@ -367,7 +367,7 @@ func (w *World) CheckMovementOutsideGrid(src Location, x, y, z int32) error {
 	return nil
 }
 
-// CheckOutsideGrid returns error if coordinates are outside the grid
+// IsOutsideGrid returns true if coordinates are outside the grid
 // X and Y also remove 1 line for border
 func (w *World) IsOutsideGrid(x, y, z int32) bool {
 	if x > w.settings.Size.MaxX-1 || x < w.settings.Size.MinX+1 {
@@ -401,6 +401,10 @@ func (w *World) Move(e Exister, x, y, z int32) error {
 	}
 
 	dst = NewLocationXYZ(src.X+x, src.Y+y, src.Z+z)
+	if e.Homebase().SameAs(dst) {
+		return fmt.Errorf("Cannot move on top of homebase!")
+	}
+
 	if err := w.UpdateGrid(e, src, dst); err != nil {
 		return err
 	}

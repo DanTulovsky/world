@@ -15,6 +15,7 @@ func (w *World) HomeHandler(writer http.ResponseWriter, r *http.Request) {
 
 	w.Show(writer)
 	w.ShowSettings(writer)
+	w.ShowSpawnPoints(writer)
 	w.ShowGrid(writer)
 
 }

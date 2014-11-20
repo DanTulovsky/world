@@ -150,10 +150,6 @@ func (w *World) movePeep(e Exister) error {
 	w.LookAround(e)
 
 	x, y, z := w.BestPeepMove(e)
-	l := &Location{x, y, z}
-	if l.SameAs(e.Homebase()) {
-		Log("Not moving on top of homebase!")
-	}
 
 	if err := w.Move(e, x, y, z); err != nil {
 		return fmt.Errorf("Error moving peep: %v", err)
@@ -206,9 +202,8 @@ func (w *World) NextMoveToGetFromTo(src, dst Location) (x int32, y int32, z int3
 			!w.IsOutsideGrid(src.X+x, src.Y+y, src.Z) {
 			return x, y, 0
 		}
-		// if all best moves are taken, try a random one
-		//m := []int32{-1, 0, 1}
-		//return m[rand.Intn(len(m))], m[rand.Intn(len(m))], z
+		// Random
+		return w.randomMove()
 	}
 	return x, y, z
 }
@@ -243,9 +238,8 @@ func (w *World) NextMoveToGetAwayFrom(current, loc Location) (x int32, y int32, 
 			!w.IsOutsideGrid(current.X+x, current.Y+y, current.Z) {
 			return x, y, 0
 		}
-		// if all best moves are taken, try a random one
-		//m := []int32{-1, 0, 1}
-		//return m[rand.Intn(len(m))], m[rand.Intn(len(m))], z
+		// Random
+		return w.randomMove()
 	}
 	return x, y, z
 }
@@ -272,11 +266,14 @@ func (w *World) BestPeepMove(e Exister) (x int32, y int32, z int32) {
 				return w.NextMoveToGetFromTo(e.Location(), n.Location())
 			}
 		} else { // different genders
-			// Move towarda different gender peep
+			// Move towards different gender peep
 			return w.NextMoveToGetFromTo(e.Location(), n.Location())
 		}
 	}
 
+	return w.randomMove()
+
+	// Possibilities
 	// No interesting neighbors around
 	if w.OfSpawnAge(e) {
 		// Move towards base
@@ -286,9 +283,9 @@ func (w *World) BestPeepMove(e Exister) (x int32, y int32, z int32) {
 		return w.NextMoveToGetAwayFrom(e.Location(), e.Homebase())
 	}
 
-	// Peeps can move one square at a time in x, y direction.
-	// No neighbors that e knows about or no specific instructions, so random move.
-	// Should not end up here right now
+}
+
+func (w *World) randomMove() (x, y, z int32) {
 	m := []int32{-1, 0, 1}
 	return m[rand.Intn(len(m))], m[rand.Intn(len(m))], z
 }

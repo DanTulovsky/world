@@ -4,8 +4,34 @@ import (
 	"fmt"
 	"testing"
 
+	termbox "github.com/nsf/termbox-go"
 	. "github.com/smartystreets/goconvey/convey"
 )
+
+func genWorld() *World {
+	// Setup
+	s := &Settings{
+		NewPeep:          0, // no randomness in tests
+		MaxAge:           10,
+		MaxPeeps:         20,
+		RandomDeath:      0, // No randomness in tests
+		NewPeepMax:       0, // No randomness in tests
+		NewPeepModifier:  0, // no randomness in tests
+		Size:             &Size{10, 10, 0, -10, -10, 0},
+		SpawnAge:         5,
+		SpawnProbability: 1, // No randomness in tests
+		PeepViewDistance: 2,
+		MaxGenders:       4,
+	}
+
+	// Listen for input events on keyboard, required to test
+	event_queue := make(chan termbox.Event)
+
+	// turn off random moves
+	allowMoves = false
+
+	return NewWorld("Alpha1", *s, event_queue, false)
+}
 
 func TestListContains(t *testing.T) {
 	Convey("ListContains works properly", t, func() {
@@ -50,4 +76,31 @@ func TestAliveDeadPeeps(t *testing.T) {
 			So(w.AlivePeepCount(), ShouldEqual, x)
 		}
 	})
+}
+
+func TestOnePeep(t *testing.T) {
+	w := genWorld()
+	maxAge := PeepAge(1000)
+	w.settings.MaxPeeps = 1
+	w.settings.MaxAge = maxAge
+	w.settings.RandomDeath = 0
+
+	peep1, _ := w.NewPeep("red", Location{})
+	id := peep1.ID()
+
+	for turn := 0; turn < int(maxAge); turn++ {
+		Convey("One peep in the world.", t, func() {
+			So(w.AlivePeepCount(), ShouldEqual, 1)
+		})
+		Convey("Peep's gender is 'red'", t, func() {
+			So(peep1.Gender(), ShouldEqual, "red")
+		})
+		Convey("Peep's age is same as world age.", t, func() {
+			So(peep1.Age(), ShouldEqual, turn)
+		})
+		Convey("Peep's ID has not changed!", t, func() {
+			So(peep1.ID(), ShouldEqual, id)
+		})
+		w.NextTurn()
+	}
 }

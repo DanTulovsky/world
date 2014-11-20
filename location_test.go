@@ -9,31 +9,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func genWorld() *World {
-	// Setup
-	s := &Settings{
-		NewPeep:          0, // no randomness in tests
-		MaxAge:           10,
-		MaxPeeps:         20,
-		RandomDeath:      0, // No randomness in tests
-		NewPeepMax:       0, // No randomness in tests
-		NewPeepModifier:  0, // no randomness in tests
-		Size:             &Size{10, 10, 0, -10, -10, 0},
-		SpawnAge:         5,
-		SpawnProbability: 1, // No randomness in tests
-		PeepViewDistance: 2,
-		MaxGenders:       4,
-	}
-
-	// Listen for input events on keyboard, required to test
-	event_queue := make(chan termbox.Event)
-
-	// turn off random moves
-	allowMoves = false
-
-	return NewWorld("Alpha1", *s, event_queue, false)
-}
-
 func TestUpdateGrid(t *testing.T) {
 	w := genWorld()
 

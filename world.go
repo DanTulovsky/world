@@ -189,6 +189,7 @@ func (w *World) NextTurn() error {
 			w.okToAdvance = false
 			w.Show(os.Stderr)
 			w.ShowGrid(os.Stderr)
+			w.ShowSpawnPoints(os.Stderr)
 		}
 
 	}
@@ -311,8 +312,8 @@ func (w *World) Pause() {
 
 // ShowGrid prints the grid and its occupants
 func (w *World) ShowGrid(writer io.Writer) {
-	fmt.Fprintf(writer, "World GRID:\n")
 	fmt.Fprintf(writer, "%v\n", strings.Repeat("*", 40))
+	fmt.Fprintf(writer, "World GRID:\n\n")
 	for _, e := range w.allExisters() {
 		p := e.(*Peep)
 		if p.IsAlive() {
@@ -322,18 +323,26 @@ func (w *World) ShowGrid(writer io.Writer) {
 	fmt.Fprintf(writer, "%v\n", strings.Repeat("*", 40))
 }
 
+// ShowSpawnPoints prints the spawn point information
+func (w *World) ShowSpawnPoints(writer io.Writer) {
+	fmt.Fprintf(writer, "%v\n", strings.Repeat("*", 40))
+	fmt.Fprintf(writer, "World Spawn Points:\n\n")
+	fmt.Fprintf(writer, "%v\n", w.SpawnLocations())
+	fmt.Fprintf(writer, "%v\n", strings.Repeat("*", 40))
+}
+
 // String prints world information.
 func (w *World) Show(writer io.Writer) {
 	fmt.Fprintf(writer, "%v\n", strings.Repeat("-", 80))
 	fmt.Fprintf(writer, "Name: %v\n", w.name)
 	fmt.Fprintf(writer, "Turn: %v\n", w.turn)
-	fmt.Fprintf(writer, "Peeps Alive/MaxAlive: %v/%v/%v\n", w.AlivePeepCount(), w.settings.MaxPeeps)
+	fmt.Fprintf(writer, "Peeps Alive/MaxAlive: %v/%v\n", w.AlivePeepCount(), w.settings.MaxPeeps)
 	fmt.Fprintf(writer, "Peep Max/Avg/Min Age: %v/%v/%v\n", w.PeepMaxAge(), w.PeepAvgAge(), w.PeepMinAge())
 	fmt.Fprintf(writer, "Genders: %v\n", w.PeepGenders())
 
 }
 
-// String prints world information.
+// String prints world settings.
 func (w *World) ShowSettings(writer io.Writer) {
 	fmt.Fprintf(writer, "%v\n", strings.Repeat("-", len("Settings")))
 	fmt.Fprintf(writer, "Settings\n")

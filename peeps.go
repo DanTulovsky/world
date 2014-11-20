@@ -193,7 +193,7 @@ func (peep *Peep) AgeOrDie(maxage PeepAge, randomdeath float64, turn Turn) (Peep
 		return peep.Age(), fmt.Errorf("Peep died, too old...")
 	}
 	// Older peeps have more chances to die
-	if rand.Float64() < randomdeath+(math.Log10(float64(peep.age))/float64(maxage/1)) {
+	if randomdeath > 0 && rand.Float64() < randomdeath+(math.Log10(float64(peep.age))/float64(maxage/1)) {
 		peep.Die(turn)
 		return peep.Age(), fmt.Errorf("Peep died, randomness sucks...")
 	}

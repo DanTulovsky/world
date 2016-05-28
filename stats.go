@@ -1,11 +1,12 @@
 package world
 
-import "time"
-
 import (
-	"github.com/rcrowley/go-metrics"
-	"github.com/rcrowley/go-metrics/influxdb"
+  "time"
+  "github.com/rcrowley/go-metrics"
+  "log"
+  "os"
 )
+
 
 type stats struct {
 	peepsAlive metrics.Gauge
@@ -26,14 +27,14 @@ func newStats() *stats {
 	r.Register("peeps_dead", stats.peepsDead)
 	r.Register("ages", stats.ages)
 
-	// go metrics.Log(metrics.DefaultRegistry, time.Second*1, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+	go metrics.Log(metrics.DefaultRegistry, time.Second*1, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 
-	go influxdb.Influxdb(r, time.Second*1, &influxdb.Config{
-		Host:     "127.0.0.1:8086",
-		Database: "world",
-		Username: "world",
-		Password: "peepsrule",
-	})
+	//go influxdb.Influxdb(r, time.Second*1, &influxdb.Config{
+	//	Host:     "127.0.0.1:8086",
+	//	Database: "world",
+	//	Username: "world",
+	//	Password: "peepsrule",
+	//})
 	return stats
 
 }

@@ -5,7 +5,7 @@ import (
 	"math"
 	"math/rand"
 
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/nu7hatch/gouuid"
 )
 
 var (
@@ -46,8 +46,12 @@ func (w *World) NewPeep(gender PeepGender, location Location) (*Peep, error) {
 	if gender == "" {
 		gender = genders[rand.Intn(len(w.Genders()))]
 	}
+	u, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
 	peep := &Peep{
-		id:        uuid.New(),
+		id:        u.String(),
 		isalive:   true,
 		gender:    gender,
 		met:       make(map[Exister]Turn),

@@ -253,7 +253,7 @@ func (w *World) BestPeepMove(e Exister) (x int32, y int32, z int32) {
 	for _, n := range neighbors {
 		// Move towards same gender if have not yet spawned and are both of spawn age
 		if n.Gender() == e.Gender() {
-			if w.turn-n.SpawnTurn() < w.settings.PeepSpawnInterval {
+			if w.turn - n.SpawnTurn() < w.settings.PeepSpawnInterval {
 				Log("too recent spawn", n.SpawnTurn())
 				continue // spawned too recently
 			}

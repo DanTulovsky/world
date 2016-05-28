@@ -331,7 +331,7 @@ func (w *World) ShowSpawnPoints(writer io.Writer) {
 	fmt.Fprintf(writer, "%v\n", strings.Repeat("*", 40))
 }
 
-// String prints world information.
+// Show prints world information.
 func (w *World) Show(writer io.Writer) {
 	fmt.Fprintf(writer, "%v\n", strings.Repeat("-", 80))
 	fmt.Fprintf(writer, "Name: %v\n", w.name)
@@ -342,7 +342,7 @@ func (w *World) Show(writer io.Writer) {
 
 }
 
-// String prints world settings.
+// ShowSettings prints world settings.
 func (w *World) ShowSettings(writer io.Writer) {
 	fmt.Fprintf(writer, "%v\n", strings.Repeat("-", len("Settings")))
 	fmt.Fprintf(writer, "Settings\n")

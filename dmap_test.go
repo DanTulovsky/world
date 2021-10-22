@@ -128,7 +128,7 @@ func BenchmarkDmap(b *testing.B) {
 	bench := func() {
 		uuid := uuid.New()
 		e := &Peep{
-			id:      uuid,
+			id:      uuid.String(),
 			isalive: true,
 			gender:  "red",
 		}

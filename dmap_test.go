@@ -2,9 +2,9 @@ package world
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"math/rand"
 	"testing"
-	"code.google.com/p/go-uuid/uuid"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
